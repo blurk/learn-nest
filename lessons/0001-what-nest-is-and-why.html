@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0001 — What NestJS Is and Why It Exists</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>What NestJS Is and Why It Exists</h1>
+<p class="subtitle">Lesson 0001 · Theory · No code yet</p>
+
+<p><strong>The single idea in this lesson</strong>: NestJS is a <em>structural</em> framework. Its job is not to write business logic for you. Its job is to force your application into a shape that stays readable as it grows. Everything else — modules, providers, decorators — is in service of that one job.</p>
+
+<p>Read this lesson once for the idea. Then do the quiz at the bottom without scrolling back. That is where the learning actually happens.</p>
+
+<h2>1. The problem Nest solves</h2>
+
+<p>You write a small backend in Node. One file. Routes, database calls, business rules, all mixed together. It works. You ship it.</p>
+
+<p>Three months later the file is 2,000 lines. Five months later three other people are editing it. Nobody knows where to put new code. Two of you have written different versions of the same helper. Tests are impossible because everything touches everything.</p>
+
+<p>This is not a failure of discipline. It is the natural behavior of a codebase that has no <em>structure imposed from the outside</em>. Node.js gives you a runtime. It does not give you an opinion about how to organize a real application.</p>
+
+<p>Nest's response to this problem is radical: <strong>borrow the structure of Angular, apply it to the backend</strong>. Angular solved the "large application stays maintainable" problem on the frontend. Nest is the same bet, for the server.</p>
+
+<blockquote>
+"A Nest application is essentially a graph of objects wired together by a container. Your code describes the graph. The container builds it." — this is the sentence to remember.
+</blockquote>
+
+<h2>2. What Nest is, in one sentence</h2>
+
+<p>Nest is a <strong>layered abstraction over Express (or Fastify) that provides an out-of-the-box application architecture</strong>. You can still reach Express underneath when you need to. But you spend most of your time in Nest's vocabulary: <em>modules</em>, <em>controllers</em>, <em>providers</em>.</p>
+
+<p>Three consequences fall out of this:</p>
+<ul>
+  <li><strong>Convention over configuration</strong>. Nest tells you where things go. You stop debating folder structure.</li>
+  <li><strong>Dependency injection</strong>. You stop writing <code>new Service()</code> everywhere. You <em>declare</em> what you need; Nest hands it to you.</li>
+  <li><strong>Decorators as metadata</strong>. You write <code>@Controller('cats')</code> and Nest reads that, registers a route, and wires it up. The decorator is not magic — it is a structured note attached to your code that Nest's runtime reads.</li>
+</ul>
+
+<h2>3. The vocabulary you will meet over and over</h2>
+
+<p>You do not need to remember any code yet. You need to recognize the names. Each of these gets its own lesson later. For now, just <em>hear</em> them.</p>
+
+<dl>
+  <dt><strong>Module</strong></dt>
+  <dd>A class wrapped in <code>@Module()</code>. A module groups related things. The application is a tree of modules. The root module is the entry point.</dd>
+
+  <dt><strong>Controller</strong></dt>
+  <dd>A class wrapped in <code>@Controller()</code>. Its only job is to receive HTTP requests and return responses. It does not contain business logic.</dd>
+
+  <dt><strong>Provider</strong></dt>
+  <dd>Anything wrapped in <code>@Injectable()</code>. Usually a service. Holds business logic and data access. Can be injected into controllers or other providers.</dd>
+
+  <dt><strong>Decorator</strong></dt>
+  <dd>A function call that begins with <code>@</code>. Attaches metadata to a class, method, or parameter. Nest reads this metadata at runtime to wire the application together.</dd>
+
+  <dt><strong>Dependency injection (DI)</strong></dt>
+  <dd>The pattern where you declare what you need as a constructor argument, and a container hands it to you. You never write <code>new</code> for things Nest manages.</dd>
+</dl>
+
+<p>That is the whole vocabulary. Five terms. Every Nest file you will ever read is some combination of these five ideas.</p>
+
+<h2>4. The mental model: a tree of modules, wired by a container</h2>
+
+<p>Picture this before any code:</p>
+
+<ul>
+  <li>The application is a <strong>root module</strong>.</li>
+  <li>The root module <em>imports</em> feature modules (Users, Orders, Auth…)</li>
+  <li>Each feature module <em>owns</em> its controllers and providers.</li>
+  <li>Controllers and providers are <em>wired together</em> by a container that Nest runs at startup.</li>
+</ul>
+
+<p>The container is the most important piece. It is the thing that reads your decorators, builds the objects, and resolves dependencies. You describe what depends on what. The container figures out the order to build things in.</p>
+
+<p>If you forget every other diagram in this course, remember: <em>"the container wires the graph I describe."</em></p>
+
+<h2>5. What Nest is <em>not</em></h2>
+
+<p>Knowing what something is not is half of knowing what it is.</p>
+
+<ul>
+  <li>Nest is <strong>not</strong> a replacement for Node.js. It runs <em>on top of</em> Node.</li>
+  <li>Nest is <strong>not</strong> a replacement for Express. By default, Express is under the hood; Nest just gives it structure.</li>
+  <li>Nest is <strong>not</strong> a database or ORM. You bring your own (TypeORM, Prisma, Mongoose, raw SQL).</li>
+  <li>Nest is <strong>not</strong> opinionated about HTTP frameworks: you can swap Express for Fastify.</li>
+  <li>Nest is <strong>not</strong> the only way to write a backend. It is a choice. The choice buys you structure; it costs you a layer of abstraction.</li>
+</ul>
+
+<h2>6. The trade you are making</h2>
+
+<p>Every framework is a trade. Nest's trade is:</p>
+
+<p style="text-align:center;"><em>"I will make you write more boilerplate up front, in exchange for keeping the application readable six months from now when there are fifty files and three people."</em></p>
+
+<p>For a five-file script, this trade is bad — Nest feels like overhead. For a real service that will be maintained, it is the whole point. Choose Nest when you are building something you expect to grow, not when you are writing a throwaway script.</p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Close the lesson. Cover the answers with your hand or a piece of paper. Then answer these five questions out loud or in writing. Do not look back. The discomfort is the point — that is what moves the idea from short-term to long-term memory.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>In one sentence, what job does NestJS do for you?</li>
+<li>What problem is Nest explicitly solving that vanilla Node.js does not solve?</li>
+<li>Name the three big ideas Nest borrows from Angular (convention over configuration, dependency injection, and one more — what is it?).</li>
+<li>What is a <em>module</em> in Nest, ignoring code? What is its purpose?</li>
+<li>True or false: Nest replaces Express. Explain in one sentence.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>Nest gives your application an opinionated structure that keeps it readable as it grows.</li>
+<li>How to organize a real application. Node gives you a runtime; Nest gives you an architecture.</li>
+<li>Decorators as metadata.</li>
+<li>A module is a group of related controllers and providers. Its purpose is to draw a boundary around a feature so the rest of the app can ignore its internals.</li>
+<li>False. Nest runs on top of Express (or Fastify). It is a layer above, not a replacement.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong> to me (your teacher) at any point. Anything unclear — "why is a module a class?", "what's the difference between a decorator and a comment?", "is DI really worth it for a small app?" — fire away. The lesson is the start of the conversation, not the end.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>Next lesson: <strong>What a module actually is</strong> — we open the decorator and look inside. Same theory-first approach: what problem does the module solve, what would happen without it, what are its four properties for.</p>
+
+<p>Primary source to skim after this lesson: <a href="https://docs.nestjs.com/first-steps">NestJS docs — First Steps</a> and the <a href="https://docs.nestjs.com/">Introduction</a> page. Just the prose, not the code yet.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources used: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0001-mission-and-zpd-established.md">0001</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

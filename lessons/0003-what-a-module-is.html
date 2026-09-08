@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0003 — What a Module Is and What Its Four Properties Are For</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>What a Module Is and What Its Four Properties Are For</h1>
+<p class="subtitle">Lesson 0003 · Theory · No code yet</p>
+
+<p><strong>The single idea in this lesson</strong>: a module is a <em>boundary</em>. It draws a circle around a piece of your application, and decides which other pieces are allowed to see inside. The four properties of <code>@Module()</code> are how you draw and police that circle.</p>
+
+<p>This lesson is the load-bearing piece for the whole course. Once the four properties are intuitive, every later Nest pattern snaps into place. Take your time.</p>
+
+<h2>1. The problem modules solve</h2>
+
+<p>You have a working Nest application. You wrote a controller, a service, and registered them. So far so good.</p>
+
+<p>Now imagine the application grows: a `UsersController`, a `UsersService`, an `OrdersController`, an `OrdersService`, an `AuthService`, a `MailerService`, a `LoggerService`, a `ConfigService`. Suddenly everything needs everything. The `OrdersService` calls `UsersService`, which calls `MailerService`, which calls `LoggerService`, which calls `ConfigService`. Everything is coupled to everything.</p>
+
+<p>This is the same problem from lesson 0001 — but a level up. The framework gave you structure at the file level. Modules give you structure at the <em>feature</em> level. Without them, you would just have a flat pile of fifty classes with no boundaries.</p>
+
+<blockquote>
+A module says: "these things belong together, and the rest of the app does not need to know how they work — only what they offer."
+</blockquote>
+
+<h2>2. The mental model: rooms with doors</h2>
+
+<p>Picture a building. Each feature is a room. Inside the room, the people (controllers, providers) talk freely to each other — no restrictions. They share whatever's in the room.</p>
+
+<p>The room has doors. Some doors are open (the room <em>exports</em> something). Some doors are open and lead to other rooms the room needs (the room <em>imports</em> something). Closed doors mean: "this is private, do not look in here."</p>
+
+<p>That is a module. Inside: free communication. Outside: only what is explicitly offered.</p>
+
+<p>Three consequences:</p>
+<ul>
+  <li><strong>Encapsulation by default.</strong> Just being in the same app is not enough. Two classes in different modules cannot see each other unless something makes it possible.</li>
+  <li><strong>The module is the unit of reuse.</strong> If you want to lift `UsersModule` into a different project, you lift the whole room — it is self-contained.</li>
+  <li><strong>The application is a tree of rooms.</strong> The root module (your `AppModule`) sits at the top and imports the feature rooms underneath.</li>
+</ul>
+
+<h2>3. The four properties</h2>
+
+<p>When you write <code>@Module({ ... })</code>, you pass an object with up to four keys. Each one has one job. Memorize the jobs, not the syntax.</p>
+
+<h3><code>controllers</code> — the people at the front desk</h3>
+
+<p>Controllers are how HTTP traffic enters the room. You list them here so Nest knows to instantiate them and register their routes.</p>
+
+<p>If a class is not listed in <code>controllers</code>, Nest will not register its routes — even if it has <code>@Controller()</code> on it. The decorator is not enough; the registration is what counts.</p>
+
+<p>Job: <em>declare which classes receive HTTP requests in this module</em>.</p>
+
+<h3><code>providers</code> — the people who do work</h3>
+
+<p>Providers are the services, repositories, factories, helpers — anything that holds logic or data access. You list them here so Nest's container can create them and inject them wherever they are needed.</p>
+
+<p>Like controllers: if a class is not listed in <code>providers</code>, the container will not manage it. It becomes invisible to dependency injection.</p>
+
+<p>Job: <em>declare which classes are managed by the IoC container for this module</em>.</p>
+
+<h3><code>imports</code> — the doors this room opens to other rooms</h3>
+
+<p>If a class in this module needs a provider that lives in <em>another</em> module, you must list that other module in <code>imports</code>. Importing a module means: "I want to use providers from that module."</p>
+
+<p>But — and this is the strict part — you can only use providers from an imported module if that module has put them in its <code>exports</code> array. Imports open the door. Exports are what is on the table behind it.</p>
+
+<p>Job: <em>declare which other modules this module depends on</em>.</p>
+
+<h3><code>exports</code> — what this room offers to other rooms</h3>
+
+<p>If you want providers from this module to be usable by other modules, you must list them in <code>exports</code>. Otherwise they stay private to this module, even if another module imports you.</p>
+
+<p>This is the public API of the module. Anything not in `exports` is internal.</p>
+
+<p>Job: <em>declare which providers from this module are available to other modules</em>.</p>
+
+<h2>4. How the four properties relate</h2>
+
+<p>Picture it as a single rule: <strong>to use a provider from module A in module B, two things must be true at the same time</strong>:</p>
+
+<ol>
+  <li>B lists A in B's <code>imports</code>.</li>
+  <li>A lists the provider in A's <code>exports</code>.</li>
+</ol>
+
+<p>Forget either, and the wiring fails. This strictness is intentional: it forces you to be explicit about who depends on whom. The result is a dependency graph you can read.</p>
+
+<h2>5. The default: encapsulation</h2>
+
+<p>Modules encapsulate by default. Nothing is shared unless you say so.</p>
+
+<p>This is the opposite of how some other frameworks work, where anything can reach anything. In Nest, if you have not written an import or an export, you have not opened the door.</p>
+
+<p>The reason is the same as every other design decision in Nest: trade a little up-front boilerplate for a lot of long-term clarity. Six months from now, when you ask "where does this class come from?", the answer is one step away: read the imports.</p>
+
+<h2>6. The root module</h2>
+
+<p>Every Nest application has exactly one <strong>root module</strong>. This is the class passed to <code>NestFactory.create()</code> in `main.ts`. Conventionally it is called `AppModule`.</p>
+
+<p>The root module is special only in one way: Nest starts walking the tree from here. Beyond that, it is just another module with the same four properties. Most often, its only job is to import all the feature modules and let them wire up together.</p>
+
+<p>Job: <em>be the entry point that lists every feature module the application uses</em>.</p>
+
+<h2>7. Two properties you might also see</h2>
+
+<p>You will sometimes encounter two more, mostly in special cases. Hold these in mind; we will return to them later.</p>
+
+<ul>
+  <li><strong><code>global</code></strong> (set via the <code>@Global()</code> decorator on the class, not the object): a module marked global does not need to be imported to be used. Its providers are available everywhere. Use sparingly.</li>
+  <li><strong>Dynamic modules</strong>: a module that exports a <code>forRoot()</code> or <code>register()</code> method so it can be configured at import time. <code>ConfigModule.forRoot()</code> is the canonical example — you tell it which <code>.env</code> file to load when you import it.</li>
+</ul>
+
+<p>You can ignore both for now. The four properties above are 95% of what you will use for the rest of this course.</p>
+
+<h2>8. The mental model, condensed</h2>
+
+<p>Hold this single image:</p>
+
+<ul>
+  <li><strong>Module</strong> = a room.</li>
+  <li><strong>Controllers</strong> in the module = the front desk, where requests come in.</li>
+  <li><strong>Providers</strong> in the module = the people who do the work.</li>
+  <li><strong>Imports</strong> = doors leading to other rooms this room needs.</li>
+  <li><strong>Exports</strong> = what is on the table behind this room's door, for other rooms to use.</li>
+</ul>
+
+<p>Read any Nest application's module tree. Each module is a room. The imports/exports tell you which rooms talk to which other rooms, and what they share when they do.</p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud or in writing. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>What problem do modules solve that just having a flat list of classes does not?</li>
+<li>Name the four properties of <code>@Module({ ... })</code> and state the job of each in one short sentence.</li>
+<li>Two modules, A and B. A provider from A is needed inside B. What two things must be true at the same time?</li>
+<li>True or false: if a class has the <code>@Controller()</code> decorator but is not listed in any module's <code>controllers</code> array, Nest will still register its routes. Explain.</li>
+<li>What is the root module's job, beyond being "where the application starts"?</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>Modules give you structure at the feature level: they let you group related code, encapsulate what is private, and declare explicitly what is shared. Without them, everything would be coupled to everything.</li>
+<li>
+  <ul>
+    <li><code>controllers</code> — declare which classes receive HTTP requests in this module.</li>
+    <li><code>providers</code> — declare which classes are managed by the IoC container for this module.</li>
+    <li><code>imports</code> — declare which other modules this module depends on.</li>
+    <li><code>exports</code> — declare which providers from this module are available to other modules.</li>
+  </ul>
+</li>
+<li>B must list A in B's <code>imports</code>, <em>and</em> A must list the provider in A's <code>exports</code>. Either alone is not enough.</li>
+<li>False. The decorator is metadata; the registration in <code>controllers</code> is what makes Nest actually instantiate the class and register its routes. Without the registration, the decorator's note is never read.</li>
+<li>To import every feature module the application uses. Beyond that, it is just another module.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. Anything still unclear — "what if I forget the export?", "can a provider be exported but not listed in providers?", "why is encapsulation the default?" — ask now. Lesson 0004 will build on this, especially the providers / DI side.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>Lesson 0004: <strong>What a provider actually is — the mechanics of dependency injection</strong>. We open <code>@Injectable()</code>, look at how the container constructs objects in the right order, and explain why you never write <code>new Service()</code> inside Nest-managed code.</p>
+
+<p>Primary source for this lesson: <a href="https://docs.nestjs.com/modules">NestJS docs — Modules</a> (full prose read; you've already absorbed most of it from this lesson). Also <a href="https://angular.dev/guide/di">Angular — DI guide</a> if the "why" of strict imports/exports feels still abstract.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0002-what-a-decorator-actually-is.html">← Lesson 0002</a></li>
+  <li><a href="./0001-what-nest-is-and-why.html">Lesson 0001</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0003-decorator-concept-solid.md">0003</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

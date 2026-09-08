@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0002 — What a Decorator Actually Is</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>What a Decorator Actually Is</h1>
+<p class="subtitle">Lesson 0002 · Theory · No Nest code yet</p>
+
+<p><strong>The single idea in this lesson</strong>: a decorator is a <em>structured note attached to your code that something else reads later</em>. It is not magic. It is a piece of metadata. The runtime that reads it is what gives it power.</p>
+
+<p>This is the lesson you missed on quiz question 3 of lesson 0001. We are going to install this idea properly before moving on.</p>
+
+<h2>1. Start with a non-programming analogy</h2>
+
+<p>Imagine a library. Every book on the shelf has a sticker on its spine. The sticker does not change the book. The book is still the book. But the librarian can read the stickers and instantly know: which section it belongs in, who borrowed it last, whether it is overdue.</p>
+
+<p>The book did not need to know any of that. The librarian needs the stickers. The sticker is <em>metadata about the book, written by someone else, read by the librarian</em>.</p>
+
+<p>A decorator is that sticker. The decorator does not change the logic of your code. It attaches a structured note. Nest is the librarian.</p>
+
+<h2>2. The mechanical definition</h2>
+
+<p>A decorator is a function that:</p>
+
+<ol>
+  <li>Takes a thing (a class, a method, a parameter, a property).</li>
+  <li>Either returns a modified version of that thing, or attaches a note about it.</li>
+  <li>That note is stored somewhere the runtime can find later.</li>
+</ol>
+
+<p>That is the whole mechanism. Everything else — the strange <code>@</code> syntax, the parentheses, the fact that some decorators take arguments and some do not — is sugar around this one idea.</p>
+
+<p>The <code>@</code> symbol is just a shorthand that says: "apply this function to the thing below me."</p>
+
+<blockquote>
+Decorators are not magic. They are notes. The runtime is what reads the notes.
+</blockquote>
+
+<h2>3. Why "metadata" is the right word</h2>
+
+<p>"Metadata" sounds abstract. It just means <em>data about data</em>. The title of a book is metadata about the book. The price tag is metadata. A comment in code is metadata — but unstructured, human-only, unreadable by the machine.</p>
+
+<p>A decorator is <em>structured metadata</em>. The note has a precise shape that a program can parse. That is the entire difference between a comment and a decorator.</p>
+
+<table style="width:100%; border-collapse: collapse; margin: 1rem 0;">
+<tr style="border-bottom: 1px solid var(--rule);">
+  <th style="text-align:left; padding: 0.4rem;">Comment</th>
+  <th style="text-align:left; padding: 0.4rem;">Decorator</th>
+</tr>
+<tr style="border-bottom: 1px solid var(--rule);">
+  <td style="padding: 0.4rem;">Human-only</td>
+  <td style="padding: 0.4rem;">Machine-readable</td>
+</tr>
+<tr>
+  <td style="padding: 0.4rem;">Ignored at runtime</td>
+  <td style="padding: 0.4rem;">Read at runtime</td>
+</tr>
+</table>
+
+<h2>4. What this has to do with Nest</h2>
+
+<p>Nest does not know about your classes until you run it. It needs a way to discover: which classes are controllers, which are providers, what dependencies they have, what HTTP routes they expose. Decorators are how you tell it.</p>
+
+<p>When you write <code>@Controller('cats')</code>, you are not "enabling" anything in the controller class. You are leaving a note on the class: "I am a controller, and my URL prefix is <code>/cats</code>." Nest's startup process finds that note, reads it, and registers the route.</p>
+
+<p>Without decorators, Nest would have no way to know your intentions. It would just see a bunch of classes.</p>
+
+<h2>5. The bridge from lesson 0001</h2>
+
+<p>Lesson 0001 said Nest gives you three big ideas borrowed from Angular: convention over configuration, dependency injection, and one more. That third one is <strong>decorators as metadata</strong>. You are now looking at it directly.</p>
+
+<p>The trio together works like this:</p>
+
+<ul>
+  <li><strong>Convention over configuration</strong> tells you <em>where to put files</em>.</li>
+  <li><strong>Decorators as metadata</strong> tell the runtime <em>what each file is</em>.</li>
+  <li><strong>Dependency injection</strong> tells the runtime <em>how to wire them together</em>.</li>
+</ul>
+
+<p>None of the three works without the others. Decorators without convention is decoration on chaos. DI without decorators has no way to know what depends on what. This is why Nest is "Angular for the backend" — that trio is the package deal.</p>
+
+<h2>6. The mental model: a librarian reading stickers</h2>
+
+<p>Picture this:</p>
+
+<ul>
+  <li>You write a class.</li>
+  <li>You put decorators on it.</li>
+  <li>The decorators stick notes to it.</li>
+  <li>Nest starts up. The librarian walks the shelves. Reads every sticker.</li>
+  <li>From those stickers, the librarian builds the application graph: who is a controller, who is a provider, who depends on whom, which URL maps to which method.</li>
+</ul>
+
+<p>The decorator is the sticker. The librarian is Nest. The graph is your running application.</p>
+
+<h2>7. Common confusions to clear now</h2>
+
+<p>You will hear people say things like "decorators modify the class." Mostly true, mostly misleading. The honest answer:</p>
+
+<ul>
+  <li>A decorator <em>can</em> return a modified version of the thing it decorates.</li>
+  <li>But in Nest, the primary job of a decorator is to <em>attach metadata</em>, not to modify code.</li>
+  <li>The class is unchanged. The metadata around it is what changes.</li>
+</ul>
+
+<p>Hold that distinction. It will save you from a lot of confusion later.</p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud or in writing. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>In one sentence, what is a decorator?</li>
+<li>What is the difference between a comment and a decorator?</li>
+<li>In the "librarian reading stickers" analogy, what represents (a) the book, (b) the sticker, (c) the librarian?</li>
+<li>What is the third big idea Nest borrows from Angular? (Lesson 0001, question 3 — the one you missed.)</li>
+<li>True or false: a Nest decorator changes the actual behavior of the class it sits on. Explain in one sentence.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>A decorator is a structured note attached to your code that a runtime reads later.</li>
+<li>A comment is human-only and ignored at runtime. A decorator is machine-readable and read at runtime.</li>
+<li>(a) the class you wrote, (b) the decorator (the metadata), (c) Nest's startup process (the runtime).</li>
+<li>Decorators as metadata.</li>
+<li>False. In Nest, the decorator attaches metadata; the class itself is unchanged. Nest's runtime reads the metadata and wires the application.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. Anything still fuzzy — "so a decorator is just a function?", "what does 'attaching metadata' look like under the hood?", "can I write my own decorator?" — ask now. Lesson 0003 is going to assume this idea is solid.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>Lesson 0003: <strong>What a module is and what its four properties are for</strong>. Same theory-first approach. We open <code>@Module()</code>, look at <code>providers</code>, <code>controllers</code>, <code>imports</code>, <code>exports</code>, and explain the purpose of each before you ever write one.</p>
+
+<p>Primary source for this lesson's broader context: <a href="https://www.typescriptlang.org/docs/handbook/decorators.html">TypeScript handbook — Decorators</a> (skim the overview, do not memorize). And the <a href="https://docs.nestjs.com/modules">NestJS docs — Modules</a> page, prose only.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0001-what-nest-is-and-why.html">← Lesson 0001</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0002-decorator-as-metadata-not-yet-stuck.md">0002</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
