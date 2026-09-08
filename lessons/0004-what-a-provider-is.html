@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0004 — What a Provider Is: The Mechanics of DI</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>What a Provider Is: The Mechanics of DI</h1>
+<p class="subtitle">Lesson 0004 · Theory · No code yet</p>
+
+<p><strong>The single idea in this lesson</strong>: you no longer create your own tools. You <em>declare* your needs, and a "manager" (the IoC container) creates and hands them to you. This is called Dependency Injection (DI).</p>
+
+<p>This is the "engine" of NestJS. If you understand this, you understand why Nest is designed the way it is.</p>
+
+<h2>1. The "New" Problem</h2>
+
+<p>In standard programming, if you want to use a service, you create it yourself:</p>
+<p><code>const userService = new UsersService();</code></p>
+
+<p>This looks simple, but it creates a <strong>hidden trap</strong>. What if <code>UsersService</code> also needs a <code>DatabaseService</code>? Then you have to do this:</p>
+<p><code>const db = new DatabaseService();</code><br>
+<code>const userService = new UsersService(db);</code></p>
+
+<p>Now imagine <code>DatabaseService</code> needs a <code>ConfigService</code>, which needs a <code>LoggerService</code>. Suddenly, to create one simple user service, you have to manually instantiate five other objects in the exact right order. This is called <strong>manual dependency management</strong>, and it is a nightmare to maintain.</p>
+
+<h2>2. The Solution: Inversion of Control (IoC)</h2>
+
+<p>Nest uses a pattern called <strong>Inversion of Control</strong>. Instead of you controlling the creation of your tools, you <em>invert</em> that control. You hand the responsibility to Nest.</p>
+
+<p>You stop saying: <em>"I will create a UsersService now."</em><br>
+You start saying: <em>"I am a controller, and I require a UsersService to function. I don't care how it's made; just give me one."</em></p>
+
+<p>The thing that handles this is called the <strong>IoC Container</strong>. Think of it as the "Great Manager" of your application.</p>
+
+<h2>3. How the IoC Container Works (The Sequence)</h2>
+
+<p>When you start your app, the IoC Container does a three-step dance:</p>
+
+<ol>
+  <li><strong>Discovery</strong>: It reads your <code class="code">@Module()</code> and <code class="code">@Injectable()</code> decorators. It now has a list of every "tool" (provider) that exists in the app.</li>
+  <li><strong>Dependency Mapping</strong>: It looks at the constructors of your classes. If <code>UsersController</code> asks for <code>UsersService</code>, and <code>UsersService</code> asks for <code>DatabaseService</code>, the container builds a map: <br>
+  <code>DatabaseService &rarr; UsersService &rarr; UsersController</code>.</li>
+  <li><strong>Instantiation</strong>: It creates the objects in the <strong>reverse</strong> order of their dependencies. It creates the <code>DatabaseService</code> first, then plugs it into the <code>UsersService</code>, then plugs that into the <code>UsersController</code>.</li>
+</ol>
+
+<p>By the time your code actually runs, every class already has exactly the tools it needs, perfectly wired and ready to go.</p>
+
+<h2>4. Why this is better: The "Swap"</h2>
+
+<p>Because you never wrote <code>new UsersService()</code>, your controller doesn't actually know <em>which specific version</em> of the service it's using. It just knows it's getting something that <em>looks like</em> a <code>UsersService</code>.</p>
+
+<p>This makes your code incredibly flexible. You can: </p>
+<ul>
+  <li><strong>Swap for Testing</strong>: During a test, you can tell the container: "Instead of the real <code>DatabaseService</code>, give the <code>UsersService</code> a <em>Fake</em>DatabaseService." You don't have to change a single line of code in your service.</li>
+  <li><strong>Change Implementation</strong>: You can replace your <code>EmailService</code> with a <code>SendGridEmailService</code>. As long as they have the same methods, the rest of the app never knows the difference.</li>
+</ul>
+
+<h2>5. The "Singleton" Default</h2>
+
+<p>By default, the IoC container is lazy and efficient. It uses the <strong>Singleton Pattern</strong>.</p>
+
+<p>If ten different controllers all ask for the <code>UsersService</code>, Nest does not create ten copies of the service. It creates <strong>one single instance</strong> and shares it with everyone. This saves memory and ensures that if the service is holding some state (like a cache), everyone sees the same state.</p>
+
+<h2>6. Summary: The DI Mental Model</h2>
+
+<p>Hold this image:</p>
+<ul>
+  <li><strong>The Provider</strong> (with <code class="code">@Injectable()</code>): A tool that says "I am available for hire."</li>
+  <li><strong>The Consumer</strong> (Controller/Service): A person who says "I need this tool to do my job."</li>
+  <li><strong>The IoC Container</strong>: The manager who knows who is available, who needs what, and handles the hiring and wiring process at startup.</li>
+</ul>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>What is the "trap" of using the <code>new</code> keyword to create services in a large app?</li>
+<li>What does "Inversion of Control" mean in plain English?</li>
+<li>In what order does the IoC container create objects? (If A depends on B, and B depends on C, who is created first?)</li>
+<li>How does DI make testing easier?</li>
+<li>What is a "Singleton" in the context of NestJS providers?</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>Manual dependency management. You have to instantiate every dependency of your dependency in the correct order, which becomes unmanageable as the app grows.</li>
+<li>Instead of the code creating its own dependencies, it delegates that responsibility to an external manager (the container).</li>
+<li>The most independent object first. C &rarr; B &rarr; A. The container creates the "bottom" of the dependency chain first.</li>
+<li>You can swap a real provider for a "mock" or "fake" provider in the container without changing the code of the class using it.</li>
+<li>The container creates only one instance of a provider and shares that same instance with every class that asks for it.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. Anything fuzzy? "What if two things depend on each other (circular)?", "What if I actually <em>want</em> a new copy every time?", "How does Nest know which class to inject if I use an interface?" — ask now.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>We have finally hit the end of the "Pure Theory" phase. You now have the full mental model of NestJS architecture: <br>
+<em style="color:var(--muted)">Convention &rarr; Decorators &rarr; Modules &rarr; Providers &rarr; IoC Container.</em></p>
+
+<p>Next lesson: <strong>The First Code — Scaffold and Bootstrapping</strong>. We will finally run the CLI, look at the four starter files, and see exactly where the theories we've discussed live in the actual files.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0003-what-a-module-is.html">← Lesson 0003</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0004-module-boundaries-and-registration-solid.md">0004</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
