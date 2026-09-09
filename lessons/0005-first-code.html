@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0005 — The First Code: Scaffold and Bootstrapping</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>The First Code: Scaffold and Bootstrapping</h1>
+<p class="subtitle">Lesson 0005 · Practical · First look at files</p>
+
+<p><strong>The single idea in this lesson</strong>: we are moving from the "What" to the "Where". We will scaffold a project and map every file to the theoretical concepts (Modules, Providers, Decorators) we've discussed. No logic yet — just orientation.</p>
+
+<h2>1. Scaffolding the project</h2>
+
+<p>Nest provides a Command Line Interface (CLI) that handles the "Convention over Configuration" part of the mission. Instead of creating folders by hand, the CLI generates a standardized structure that every Nest developer recognizes.</p>
+
+<p>To create a new project, you run:</p>
+<pre><code>npm i -g @nestjs/cli
+nest new my-nest-app</code></pre>
+
+<p>This creates a directory with a set of "starter" files. These files are the minimum viable structure required to bootstrap the IoC container and start the server.</p>
+
+<h2>2. The "Big Four" Starter Files</h2>
+
+<p>When you open <code>src/</code>, you will see these four core files. Let's map them to the theory.</p>
+
+<h3 java="main.ts"><code>main.ts</code> — The Ignition Switch</h3>
+<p>This is the entry point of your application. Its only job is to tell the <strong>IoC Container</strong> to start.</p>
+<p>Inside, you will see <code>NestFactory.create(AppModule)</code>. This is the moment the "Librarian" starts walking the shelves, reading decorators, and wiring the graph. If <code>main.ts</code> doesn't run, nothing else exists.</p>
+
+<h3 java="app.module.ts"><code>app.module.ts</code> — The Root Room</h3>
+<p>Remember the "Root Module"? This is it. It is the top-level room that imports all other feature rooms. It is the starting point for the dependency graph.</p>
+<p>You will see the <code>@Module()</code> decorator here with its properties (<code>imports</code>, <code>controllers</code>, <code>providers</code>). This is where you register your "Front Desk" and "Workers".</p>
+
+<h3 java="app.controller.ts"><code>app.controller.ts</code> — The Front Desk</h3>
+<p>This is your first Controller. It has the <code>@Controller()</code> decorator. Its job is simple: receive an HTTP request and return a response. It doesn't do "work"; it delegates work to a provider.</p>
+
+<h3 java="app.service.ts"><code>app.service.ts</code> — The Worker</h3>
+<p>This is your first Provider. It has the <code>@Injectable()</code> decorator. This is where the actual business logic lives. The controller asks the service for data, and the service provides it.</p>
+
+<h2>3. The Theory-to-File Map</h2>
+
+<p>Let's connect everything we've learned so far to these files:</p>
+
+<table style="width:100%; border-collapse: collapse; margin: 1rem 0;">
+<tr style="border-bottom: 1px solid var(--rule); background: var(--code-bg);">
+  <th style="text-align:left; padding: 0.4rem;">Concept</th>
+  <th style="text-align:left; padding: 0.4rem;">Where it lives in the files</th>
+</tr>
+<tr style="border-bottom: 1px solid var(--rule);">
+  <td style="padding: 0.4rem;"><strong>Decorators as Metadata</strong></td>
+  <td style="padding: 0.4rem;">The <code>@Module()</code> in app.module, <code>@Controller()</code> in app.controller, etc.</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--rule);">
+  <td style="padding: 0.4rem;"><strong>IoC Container / Bootstrapping</strong></td>
+  <td style="padding: 0.4rem;">The <code>NestFactory.create()</code> call in <code>main.ts</code>.</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--rule);">
+  <td style="padding: 0.4rem;"><strong>Module Boundaries</strong></td>
+  <td style="padding: 0.4rem;">The <code>@Module({ ... })</code> object in <code>app.module.ts</code>.</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--rule);">
+  <td style="padding: 0.4rem;"><strong>Dependency Injection</strong></td>
+  <td style="padding: 0.4rem;">The <code>constructor(private appService: AppService)</code> in <code>app.controller.ts</code>.</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--rule);">
+  <td style="padding: 0.4rem;"><strong>Singleton Default</strong></td>
+  <td style="padding: 0.4rem;">The fact that <code>AppService</code> is listed once in <code>providers</code> and shared by any controller.</td>
+</tr>
+</table>
+
+<h2>4. The Bootstrapping Sequence</h2>
+
+<p>When you run <code>npm run start</code>, this is the exact order of events:</p>
+
+<ol>
+  <li><strong>Node.js</strong> executes <code>main.ts</code>.</li>
+  <li><strong><code>NestFactory</code></strong> is called with <code>AppModule</code>.</li>
+  <li><strong>The Container</strong> scans <code>AppModule</code>. It sees <code>AppController</code> and <code>AppService</code> in the decorators.</li>
+  <li><strong>The Container</strong> notices <code>AppController</code> depends on <code>AppService</code>.</li>
+  <li><strong>The Container</strong> instantiates <code>AppService</code> (the provider).</li>
+  <li><strong>The Container</strong> instantiates <code>AppController</code> and injects the <code>AppService</code> instance into its constructor.</li>
+  <li><strong>The Server</strong> starts listening on port 3000.</li>
+</ol>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>Which file is responsible for "igniting" the IoC container?</li>
+<li>In the starter project, where do you register a new controller so that Nest knows to register its routes?</li>
+<li>If you want to see where the "Root Module" is defined, which file do you open?</li>
+<li>Looking at <code>app.controller.ts</code>, how does the controller actually get the <code>AppService</code> instance? (What is the mechanism called?)</li>
+<li>True or False: The <code>@Injectable()</code> decorator on <code>app.service.ts</code> is what actually creates the service instance. Explain.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li><code>main.ts</code> (specifically the <code>NestFactory.create()</code> call).</li>
+<li>In the <code>controllers</code> array of the <code>@Module()</code> decorator (usually in <code>app.module.ts</code>).</li>
+<li><code>app.module.ts</code>.</li>
+<li>Dependency Injection. It is declared in the constructor, and the IoC container injects it at runtime.</li>
+<li>False. The decorator is just a "sticker" (metadata). The <strong>IoC Container</strong> is what actually creates the instance after reading that metadata.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. Now that you see the files, does the theory feel different? "Why is main.ts so small?", "What happens if I delete the @Module decorator?", "Where does the HTTP server actually live?" — ask away.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>We have finished the "Orientation" phase. You now know what Nest is, how it's structured, and what the starter files do.</p>
+
+<p>Next lesson: <strong>The Request-Response Cycle — Controllers and Routing</strong>. We will finally write some code. We will create our first route, handle a GET request, and use a decorator to capture data from the URL.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0004-what-a-provider-is.html">← Lesson 0004</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0004-module-boundaries-and-registration-solid.md">0004</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
