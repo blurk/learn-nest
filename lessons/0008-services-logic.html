@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0008 — Services and Business Logic: The Heavy Lifting</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Services and Business Logic: The Heavy Lifting</h1>
+<p class="subtitle">Lesson 0008 · Practical · structuring logic</p>
+
+<p><strong>The single idea in this lesson</strong>: controllers are for <em>routing</em>, services are for <em>thinking</em>. A controller should be "thin" (just delegating), while a service should be "fat" (containing the actual business rules). This separation makes your app testable and maintainable.</p>
+
+<h2>1. The "Thin Controller" Pattern</h2>
+
+<p>A common mistake for junior developers is putting business logic directly inside the controller. This is called a "Fat Controller."</p>
+
+<p><strong>The Wrong Way (Fat Controller):</strong></p>
+<pre><code>
+@Post()
+create(@Body() createCatDto: CreateCatDto) {
+  // ❌ BAD: Business logic in the controller
+  if (createCatDto.age < 0) {
+    throw new BadRequestException('Age cannot be negative');
+  }
+  const savedCat = this.db.save(createCatDto);
+  console.log('Cat saved at ' + new Date());
+  return savedCat;
+}
+</code></pre>
+
+<p>Why is this bad? Because if you ever want to create a cat from a different place (like a CLI tool or a Cron job), you have to copy-paste that logic. You cannot reuse it.</p>
+
+<h2>2. The "Service Layer" Pattern</h2>
+
+<p>The correct way is to move all "thinking" into the Service. The controller becomes a simple coordinator.</p>
+
+<p><strong>The Right Way (Thin Controller):</strong></p>
+<pre><code>
+// cats.controller.ts
+@Post()
+create(@Body() createCatDto: CreateCatDto) {
+  // ✅ GOOD: Just delegating
+  return this.catsService.createCat(createCatDto);
+}
+
+// cats.service.ts
+async createCat(dto: CreateCatDto) {
+  // Logic lives here!
+  if (dto.age < 0) {
+    throw new BadRequestException('Age cannot be negative');
+  }
+  return this.db.save(dto);
+}
+</code></pre>
+
+<p>Now, your business rule ("Age cannot be negative") is in one place. Any part of your app that uses <code style="color:var(--accent)">createCat()</code> will follow the same rule.</p>
+
+<h2>3. What actually belongs in a Service?</h2>
+
+<p>If you are unsure where to put a piece of code, ask: <em>"Would this logic still be the same if I changed my API from REST to GraphQL or a CLI?"</em></p>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong>Put it in the Controller if</strong> it's about the <strong>HTTP layer</strong>: reading a header, parsing a query string, choosing which status code to return.</li>
+  <li><strong>Put it in the Service if</strong> it's about the <strong>Business layer</strong>: calculating a price, validating a user's permissions, interacting with a database, sending an email.</li>
+</ul>
+
+<h2>4. Service-to-Service Communication</h2>
+
+<p>Because services are just providers, they can inject other services. This is how you build complex features from small, reusable pieces.</p>
+
+<p>Imagine an <code style="color:var(--accent)">OrdersService</code>. To create an order, it needs to:</p>
+<ol>
+  <li>Check if the user exists (<code style="color:var(--accent)">UsersService</code>).</li>
+  <li>Check if the item is in stock (<code style="color:var(--accent)">InventoryService</code>).</li>
+  <li>Save the order (<code style="color:var(--accent)">OrderRepository</code>).</li>
+</ol>
+
+<p>The <code style="color:var(--accent)">OrdersService</code> doesn't do all this work itself; it coordinates other services. This is the "Composition" pattern.</p>
+
+<h2>5. The "Service Layer" Mental Model</h2>
+
+<p>Think of your app as a restaurant:</p>
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong>The Controller is the Waiter</strong>. They take the order, check if the customer is at the right table, and deliver the food. They don't cook.</li>
+  <li><strong>The Service is the Chef</strong>. They know the recipe, how to use the oven, and how to plate the food. They don't talk to the customer.</li>
+  <li><strong>The Repository/DB is the Pantry</strong>. This is where the raw ingredients are kept. The chef goes here to get what they need.</li>
+</ul>
+
+<p>If the waiter starts cooking, the restaurant becomes a mess. If the chef starts taking orders, the kitchen stops working. Keep them separate.</p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>What is the "Thin Controller" pattern?</li>
+<li>You are building a feature to "Upgrade User Plan". Where should the logic that checks if the user has enough credits live: the controller or the service? Why?</li>
+<li>If a service needs to use another service, how does it get access to it?</li>
+<li>In the restaurant analogy, who represents the Controller and who represents the Service?</li>
+<li>True or False: A service should handle parsing a <code style="color:var(--accent)">@Query()</code> parameter from the URL. Explain.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>A pattern where controllers only handle routing and delegation, while all business logic is moved into services.</li>
+<li>The service. Logic regarding credits is a business rule, not an HTTP concern. This allows the logic to be reused outside of a web request.</li>
+<li>Via Dependency Injection. The second service is listed in the first service's constructor.</li>
+<li>Controller = Waiter; Service = Chef.</li>
+<li>False. Parsing the request is an HTTP concern and belongs in the controller. The service should receive the already-parsed value.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. "What if a service gets too big?", "Can a controller call multiple services?", "When do I create a new service vs adding a method to an existing one?" — ask now.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>We have now covered the entire "Core" of a NestJS application: <br>
+<em style="color:var(--muted)">Modules &rarr; Providers &rarr; Controllers &rarr; Services.</em></p>
+
+<p>Next lesson: <strong>The Data Layer: Introduction to Repositories and Entities</strong>. We've been pretending the services just "save" data. Now we'll look at how Nest interacts with a database using the Repository pattern.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0007-handling-data.html">← Lesson 0007</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0004-module-boundaries-and-registration-solid.md">0004</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

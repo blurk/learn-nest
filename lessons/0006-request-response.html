@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0006 — The Request-Response Cycle: Controllers and Routing</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>The Request-Response Cycle: Controllers and Routing</h1>
+<p class="subtitle">Lesson 0006 · Practical · First code writes</p>
+
+<p><strong>The single idea in this lesson</strong>: a Controller is the "Front Desk" of your application. Its only job is to take an incoming HTTP request, ask a Service for the answer, and return an HTTP response. It does not "think"; it only "routes".</p>
+
+<h2>1. The Journey of a Request</h2>
+
+<p>Before we write code, let's trace the path of a single request to your server:</p>
+
+<ol>
+  <li><strong>The Client</strong> (Browser/Postman) sends a request: <code style="color:var(--accent)">GET /cats/all</code>.</li>
+  <li><strong>The Server</strong> (Express/Fastify) receives the raw packet and asks Nest: "Who handles <code style="color:var(--accent)">/cats/all</code>?"</li>
+  <li><strong>The Controller</strong> matches the route. Nest calls the specific method in your class decorated with <code style="color:var(--accent)">@Get('all')</code>.</li>
+  <li><strong>The Service</strong> is called by the controller to get the data.</li>
+  <li><strong>The Response</strong> is sent back through the controller, then the server, then to the client.</li>
+</ol>
+
+<h2>2. Defining the Route (The "Where")</h2>
+
+<p>To create a route, you use two decorators: one for the <strong>class</strong> and one for the <strong>method</strong>.</p>
+
+<p><strong>The Class Decorator</strong>: <code style="color:var(--accent)">@Controller('cats')</code><br>
+This sets the "prefix". Every route inside this class will start with <code style="color:var(--accent)">/cats</code>.</p>
+
+<p><strong>The Method Decorator</strong>: <code style="color:var(--accent)">@Get('all')</code><br>
+This defines the specific endpoint. Combined with the prefix, this creates the route: <code style="color:var(--accent)">/cats/all</code>.</p>
+
+<pre><code>
+@Controller('cats')
+export class CatsController {
+  @Get('all') // Route: GET /cats/all
+  findAll() {
+    return 'This action returns all cats';
+  }
+}
+</code></pre>
+
+<h2>3. Capturing Data (The "What")</h2>
+
+<p>Most requests aren't static. You need data from the user. Nest provides "Param Decorators" to pluck data out of the request effortlessly.</p>
+
+<h3 java="params">1. Path Parameters (<code style="color:var(--accent)">@Param</code>)</h3>
+<p>Use this for <strong>required</strong> values that identify a specific resource (e.g., an ID).</p>
+<p>Route: <code style="color:var(--accent)">/cats/:id</code> &rarr; User hits <code style="color:var(--accent)">/cats/123</code></p>
+<pre><code>
+@Get(':id')
+findOne(@Param('id') id: string) {
+  return `This action returns cat #${id}`;
+}
+</code></pre>
+
+<h3 java="queries">2. Query Parameters (<code style="color:var(--accent)">@Query</code>)</h3>
+<p>Use this for <strong>optional</strong> values like filtering, sorting, or searching.</p>
+<p>Route: <code style="color:var(--accent)">/cats</code> &rarr; User hits <code style="color:var(--accent)">/cats?breed=siamese</code></p>
+<pre><code>
+@Get()
+findCats(@Query('breed') breed: string) {
+  return `Searching for cats of breed: ${breed}`;
+}
+</code></pre>
+
+<h2>4. The Response: What happens when you return?</h2>
+
+<p>In some frameworks, you have to manually send a response: <code style="color:var(--accent)">res.status(200).send(data)</code>. Nest simplifies this.</p>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong>Returning an Object/Array</strong> &rarr; Nest automatically converts it to <strong>JSON</strong> and sets the status to <code style="color:var(--accent)">200 OK</code>.</li>
+  <li><strong>Returning a String</strong> &rarr; Nest sends it as <code style="color:var(--accent)">text/plain</code> with status <code style="color:var(--accent)">200 OK</code>.</li>
+  <li><strong>Returning nothing</strong> &rarr; Nest sends an empty response with status <code style="color:var(--accent)">200 OK</code>.</li>
+</ul>
+
+<blockquote style="background: var(--accent-soft);">
+<strong>Pro Tip:</strong> If you need to change the status code (e.g., return a 201 Created), you can use the <code style="color:var(--accent)">@HttpCode(201)</code> decorator on the method.
+</blockquote>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Close the lesson. Answer these out loud. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>If a class has <code style="color:var(--accent)">@Controller('users')</code> and a method has <code style="color:var(--accent)">@Get('profile')</code>, what is the full URL route?</li>
+<li>When should you use <code style="color:var(--accent)">@Param</code> instead of <code style="color:var(--accent)">@Query</code>? Give a real-world example.</li>
+<li>If a controller method returns a JavaScript object <code style="color:var(--accent)">{ name: 'Nest' }</code>, what does the client actually receive in their browser?</li>
+<li>In the "Journey of a Request," who is the first entity to receive the raw HTTP packet from the internet?</li>
+<li>What happens if you return a string from a controller method?</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li><code style="color:var(--accent)">/users/profile</code></li>
+<li>Use <code style="color:var(--accent)">@Param</code> for required identifiers (e.g., <code style="color:var(--accent)">/users/123</code>) and <code style="color:var(--accent)">@Query</code> for optional filters/sorting (e.g., <code style="color:var(--accent)">/users?sort=desc</code>).</li>
+<li>A JSON string: <code style="color:var(--accent)">{"name": "Nest"}</code> with a <code style="color:var(--accent)">200 OK</code> status.</li>
+<li>The underlying HTTP server (Express or Fastify).</li>
+<li>The browser receives it as <code style="color:var(--accent)">text/plain</code> with a <code style="color:var(--accent)">200 OK</code> status.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. "How do I handle POST requests?", "Can I have two methods with the same route but different HTTP verbs?", "What if the parameter is missing?" — ask now.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>Next lesson: <strong>Handling Data: POST, Body, and DTOs</strong>. We move from reading data (GET) to receiving and validating data from the user (POST/PUT/PATCH). We will introduce the concept of DTOs (Data Transfer Objects) to keep our inputs clean.</p>
+
+<p>Primary source for this lesson: <a href="https://docs.nestjs.com/controllers">NestJS docs — Controllers</a>. Read the "Request payload" and "Route parameters" sections.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0005-first-code.html">← Lesson 0005</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0004-module-boundaries-and-registration-solid.md">0004</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

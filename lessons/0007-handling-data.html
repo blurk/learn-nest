@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0007 — Handling Data: POST, Body, and DTOs</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Handling Data: POST, Body, and DTOs</h1>
+<p class="subtitle">Lesson 0007 · Practical · Writing data</p>
+
+<p><strong>The single idea in this lesson</strong>: receiving data from a user is dangerous. You should never trust a request body. We use <em>DTOs (Data Transfer Objects)</em> to define the contract and <em>Validation Pipes</em> to enforce it before it ever touches our business logic.</p>
+
+<h2>1. The POST Request and <code style="color:var(--accent)">@Body()</code></h2>
+
+<p>While GET requests put data in the URL, POST requests put data in the <strong>Request Body</strong>. This is usually a JSON object. To access this in Nest, we use the <code style="color:var(--accent)">@Body()</code> decorator.</p>
+
+<pre><code>
+@Post()
+create(@Body() createCatDto: any) {
+  return this.catsService.create(createCatDto);
+}
+</code></pre>
+
+<p>The <code style="color:var(--accent)">@Body()</code> decorator tells Nest: "Take the JSON body from the incoming request and map it to this variable."</p>
+
+<h2>2. The Danger of <code style="color:var(--accent)">any</code></h2>
+
+<p>In the example above, we used <code style="color:var(--accent)">any</code>. This is a disaster waiting to happen. Why?</p>
+<ul>
+  <li><strong>No Autocomplete</strong>: Your IDE doesn't know what's inside the body.</li>
+  <li><strong>No Safety</strong>: If the user sends <code style="color:var(--accent)">{ "age": "ten" }</code> instead of a number, your service might crash.</li>
+  <li><strong>Over-posting</strong>: A malicious user could send <code style="color:var(--accent)">{ "isAdmin": true }</code>. If you pass the whole body to your database, they just gave themselves admin rights.</li>
+</ul>
+
+<h2>3. The Solution: DTOs (Data Transfer Objects)</h2>
+
+<p>A <strong>DTO</strong> is a simple class that defines exactly what a request should look like. It is a <em>contract</em> between the client and the server.</p>
+
+<pre><code>
+// create-cat.dto.ts
+export class CreateCatDto {
+  name: string;
+  age: number;
+  breed: string;
+}
+</code></pre>
+
+<p>By replacing <code style="color:var(--accent)">any</code> with <code style="color:var(--accent)">CreateCatDto</code>, you tell Nest (and your fellow developers) exactly what data is expected for this operation.</p>
+
+<h2>4. Enforcing the Contract: Validation Pipes</h2>
+
+<p>A DTO is just a TypeScript type. But remember: TypeScript types are erased at runtime. A user can still send a string where you expected a number.</p>
+
+<p>To stop this, Nest uses <strong>Validation Pipes</strong>. A pipe is a piece of code that "intercepts" the request before it hits the controller. It checks the data against the DTO.</p>
+
+<p>We use the <code style="color:var(--accent)">class-validator</code> library to add rules to the DTO:</p>
+
+<pre><code>
+import { IsString, IsInt, IsNotEmpty } from 'class-validator';
+
+export class CreateCatDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsInt()
+  age: number;
+
+  @IsString()
+  breed: string;
+}
+</code></pre>
+
+<p>Now, if a user sends <code style="color:var(--accent)">{ "age": "ten" }</code>, the Validation Pipe sees that <code style="color:var(--accent)">@IsInt()</code> is violated and immediately <strong>throws a 400 Bad Request</strong>. Your controller method is never even called. Your logic stays clean because it only ever receives valid data.</p>
+
+<h2>5. The POST Lifecycle (Mental Model)</h2>
+
+<p>Trace the journey of a POST request with validation:</p>
+
+<ol>
+  <li><strong>Client</strong> sends POST with JSON body.</li>
+  <li><strong>Express/Fastify</strong> receives raw JSON.</li>
+  <li><strong>Validation Pipe</strong> reads the <code style="color:var(--accent)">CreateCatDto</code> and checks the decorators (<code style="color:var(--accent)">@IsInt</code>, etc.).</li>
+  <li><strong>Decision Point</strong>:
+    <ul>
+      <li><em style="color:var(--accent)">Invalid?</em> &rarr; Throw **400 Bad Request** &rarr; Client gets error.</li>
+      <li><em style="color:var(--accent)">Valid?</em> &rarr; Move to controller.</li>
+    </ul>
+  </li>
+  <li><strong>Controller</strong> receives the validated object via <code style="color:var(--accent)">@Body()</code>.</li>
+  <li><strong>Service</strong> saves the data.</li>
+  <li><strong>Response</strong> is sent back with a **201 Created** status.</li>
+</ol>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>What is the purpose of a DTO (Data Transfer Object)?</li>
+<li>Why is using <code style="color:var(--accent)">any</code> in a <code style="color:var(--accent)">@Body()</code> decorator dangerous?</li>
+<li>What is the difference between a DTO and a Validation Pipe?</li>
+<li>If a user sends an invalid data type to a route protected by a Validation Pipe, what HTTP status code does the client receive?</li>
+<li>True or False: A DTO's TypeScript types are enough to stop a user from sending a string instead of a number at runtime. Explain.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>A DTO defines the "contract" for the request payload, specifying exactly what fields and types are expected.</li>
+<li>It provides no type safety, no autocomplete, and allows "over-posting" (where users send fields they shouldn't be allowed to change).</li>
+<li>The DTO defines the <em>shape* of the data; the Validation Pipe <em>enforces* that shape at runtime.</li>
+<li><code style="color:var(--accent)">400 Bad Request</code>.</li>
+<li>False. TypeScript types are erased at runtime. You need the Validation Pipe and <code style="color:var(--accent)">class-validator</code> decorators to enforce types during the request.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. "How do I handle optional fields in a DTO?", "Can I use DTOs for GET requests?", "What if I want to return a different DTO than the one I received?" — ask now.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>We have now covered the basic "Read" (GET) and "Write" (POST) cycles. You know how to route, how to capture data, and how to validate it.</p>
+
+<p>Next lesson: <strong>Services and Business Logic — The Heavy Lifting</strong>. We've seen Services as "Workers", but now we'll learn how to actually structure them. We'll cover:
+- Separating "Controller logic" from "Business logic".
+- Writing a real service method.
+- The first introduction to the "Service Layer" pattern.
+</p>
+
+<p>Primary source for this lesson: <a href="https://docs.nestjs.com/controllers#request-payload">NestJS docs — Request Payload</a> and the <a href="https://docs.nestjs.com/pipes">Pipes</a> documentation.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0006-request-response.html">← Lesson 0006</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0004-module-boundaries-and-registration-solid.md">0004</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

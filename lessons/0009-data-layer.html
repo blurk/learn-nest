@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0009 — The Data Layer: Repositories and Entities</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>The Data Layer: Repositories and Entities</h1>
+<p class="subtitle">Lesson 0009 · Theory · Database mental model</p>
+
+<p><strong>The single idea in this lesson</strong>: Your services should not care *how* data is saved (SQL, MongoDB, or a text file). They should talk to a <em>Repository</em>, which acts as a mediator between the business logic and the database.</p>
+
+<h2>1. The "Leak" Problem</h2>
+
+<p>Imagine your service writes raw SQL queries:</p>
+<pre><code>
+// ❌ BAD: Database logic leaking into the service
+async findUser(id: string) {
+  return this.db.query(`SELECT * FROM users WHERE id = '${id}'`);
+}
+</code></pre>
+
+<p>This is dangerous for three reasons:</p>
+<ul>
+  <li><strong>Fragility</strong>: If you change a column name in the database, you have to find and replace every single SQL string across your entire app.</li>
+  <li><strong>Untestability</strong>: To test this service, you <em>must</em> have a real database running. You cannot easily swap the DB for a "fake" one during tests.</li>
+  <li><strong>Security</strong>: Writing raw strings like the example above opens you up to <strong>SQL Injection</strong> attacks.</li>
+</ul>
+
+<h2>2. The Repository Pattern</h2>
+
+<p>The **Repository Pattern** creates a layer of abstraction. Instead of the service talking to the database, it talks to a Repository. The Repository is a provider that specializes in "data access."</p>
+
+<p>The service says: <em>"Give me the user with this ID."</em> The repository handles the SQL, the connection, and the raw data fetching.</p>
+
+<p><strong>The Right Way (Using a Repository):</strong></p>
+<pre><code>
+// users.service.ts
+async findUser(id: string) {
+  // ✅ GOOD: The service doesn't know HOW it's found, just that it IS found.
+  return this.usersRepository.findById(id);
+}
+</code></pre>
+
+<h2>3. What is an Entity?</h2>
+
+<p>If the Repository is the "manager" of the data, the **Entity** is the "shape" of the data. An Entity is a class that maps directly to a database table.</p>
+
+<p>If you have a `users` table in PostgreSQL, you create a `User` entity in NestJS. Every property in the class corresponds to a column in the table.</p>
+
+<pre><code>
+// user.entity.ts
+export class User {
+  id: number;
+  username: string;
+  email: string;
+  passwordHash: string;
+}
+</code></pre>
+
+<p>The Repository's job is to take raw rows from the database and turn them into **Entity objects** that your services can use.</p>
+
+<h2>4. The Data Flow (Complete Picture)</h2>
+
+<p>Now we can connect everything from Lesson 0001 to now. Here is the full journey of a "Find User" request:</p>
+
+<ol>
+  <li><strong>Client</strong> hits <code style="color:var(--accent)">GET /users/123</code>.</li>
+  <li><strong>Controller</strong> captures the ID and calls <code style="color:var(--accent)">usersService.findOne(id)</code>.</li>
+  <li><strong>Service</strong> applies business rules (e.g., "is this user active?") and calls <code style="color:var(--accent)">usersRepository.findById(id)</code>.</li>
+  <li><strong>Repository</strong> runs the SQL, gets a row from the DB, and maps it into a <strong>User Entity</strong> object.</li>
+  <li><strong>Service</strong> receives the Entity, maybe maps it to a <strong>UserResponseDto</strong>.</li>
+  <li><strong>Controller</strong> returns the DTO to the client.</li>
+</ol>
+
+<h2>5. The "Swap" (Again!)</h2>
+
+<p>Because the service only depends on the Repository's <em>interface</em>, you can swap the database without the service ever knowing.</p>
+
+<p>You could start your project with a <strong>MemoryUserRepository</strong> (just a JavaScript array) for fast prototyping. When you're ready for production, you swap it for a <strong>PostgresUserRepository</strong>. Your `UsersService` doesn't change a single line of code because both repositories provide the same <code style="color:var(--accent)">findById()</code> method.</p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud. Do not scroll back.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>What is the primary goal of the Repository Pattern?</li>
+<li>What is the difference between an Entity and a DTO?</li>
+<li>If a service contains raw SQL queries, what are two major risks you are taking?</li>
+<li>In the data flow, which layer is responsible for turning a database row into an object?</li>
+<li>Why is it beneficial to use a Repository when writing unit tests for a Service?</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>To decouple the business logic (Service) from the data access logic (Database), preventing the service from being tied to a specific DB implementation.</li>
+<li>An Entity represents the data as it exists in the database (internal). A DTO represents the data as it is sent over the network (external).</li>
+<li>1. Fragility (changing DB columns breaks code everywhere) and 2. Security (SQL Injection).</li>
+<li>The Repository.</li>
+<li>You can replace the real Repository (which needs a DB) with a "Mock Repository" (a fake one in memory), allowing you to test the service in isolation.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Ask followup questions</strong>. "What's the difference between an ORM and a Repository?", "Do I need a repository for every entity?", "How does the repository actually connect to the DB?" — ask now.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>We have now completed the conceptual map of a NestJS application. You know the "Who", "What", "Where", and "How" of the architecture.</p>
+
+<p>Now we move into **Implementation**. We've talked about "The First Code" in orientation, but now we will actually build a small project together. We will start with **TypeScript Essentials for NestJS** — the specific parts of TS (Decorators, Types, Interfaces) you need to master to stop fighting the compiler and start building.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0008-services-logic.html">← Lesson 0008</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  <li>Learning records: <a href="../learning-records/0004-module-boundaries-and-registration-solid.md">0004</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
