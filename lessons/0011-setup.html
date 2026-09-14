@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0011 — First Project: Workspace Setup</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>First Project: Workspace Setup</h1>
+<p class="subtitle">Lesson 0011 · Practical · From theory to code</p>
+
+<p><strong>The single idea in this lesson</strong>: Setting up a professional NestJS environment is about more than just running a command. It's about configuring the <em>Tooling</em> (CLI, Node, NPM) so the environment helps you write correct code instead of fighting you.</p>
+
+<h2>1. The Tooling Stack</h2>
+
+<p>To build with NestJS, we use a specific set of tools. Ensure you have these installed on your machine:</p>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong style="color:var(--accent)">Node.js (LTS)</strong>: The runtime that executes our JavaScript/TypeScript.</li>
+  <li><strong style="color:var(--accent)">NPM / PNPM / Yarn</strong>: The package manager that downloads our libraries.</li>
+  <li><strong style="color:var(--accent)">Nest CLI</strong>: The command-line tool that scaffolds our project.</li>
+</ul>
+
+<p><strong>Install the Nest CLI globally:</strong></p>
+<pre><code>npm i -g @nestjs/cli</code></pre>
+
+<h2>2. Scaffolding the Application</h2>
+
+<p>Instead of creating folders by hand, we use the CLI to create a standardized structure that every Nest developer recognizes.</p>
+
+<p><strong>Run the magic command:</strong></p>
+<pre><code>nest new my-nest-app</code></pre>
+
+<p>The CLI will ask you which package manager you want to use. Choose <strong style="color:var(--accent)">npm</strong> (or your preferred one).</p>
+
+<h2>3. The "First Sight" Anatomy</h2>
+
+<p>Once the project is created, open it in VS Code. You will see a <code style="color:var(--muted)">/src</code> folder. This is where 99% of your work happens. Here is what you'll find:</p>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong style="color:var(--accent)">main.ts</strong>: The ignition switch. It calls <code style="color:var(--muted)">NestFactory.create()</code> to boot the app.</li>
+  <li><strong style="color:var(--accent)">app.module.ts</strong>: The Root Module. This is the heart of the app where everything is wired together.</li>
+  <li><strong style="color:var(--accent)">app.controller.ts</strong>: A basic "Hello World" controller to prove things work.</li>
+  <li><strong style="color:var(--accent)">app.service.ts</strong>: A basic service that returns the "Hello World" string.</li>
+</ul>
+
+<h2>4. Running the App (Development Mode)</h2>
+
+<p>In backend development, we don't want to restart the server every time we change a line of code. We use <strong style="color:var(--accent)">Watch Mode</strong>.</p>
+
+<p><strong>Run the app:</strong></p>
+<pre><code>npm run start:dev</code></pre>
+
+<p>Now, open your browser to <code style="color:var(--muted)">http://localhost:3000</code>. You should see <strong>"Hello World!"</strong>. If you change the string in <code style="color:var(--muted)">app.service.ts</code> and save, the browser will update automatically after a quick refresh.</p>
+
+<h2>5. The CLI Productivity Shortcuts</h2>
+
+<p>Stop creating files manually. The Nest CLI can generate the "Module $\rightarrow$ Service $\rightarrow$ Controller" trio for you in seconds.</p>
+
+<p><strong>The "Feature" Workflow:</strong></p>
+<ol>
+  <li><strong style="color:var(--accent)">Generate Module</strong>: <code style="color:var(--muted)">nest g mo users</code> (Creates users.module.ts)</li>
+  <li><strong style="color:var(--accent)">Generate Service</strong>: <code style="color:var(--muted)">nest g s users</code> (Creates users.service.ts and adds it to the module)</li>
+  <li><strong style="color:var(--accent)">Generate Controller</strong>: <code style="color:var(--muted)">nest g co users</code> (Creates users.controller.ts and adds it to the module)</li>
+</ol>
+
+<p>Notice how the CLI automatically updates the <strong style="color:var(--accent)">app.module.ts</strong> or <strong style="color:var(--accent)">users.module.ts</strong> for you. It handles the "Registration" step we learned in the theory lessons!</p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>What is the purpose of the <strong style="color:var(--accent)">Nest CLI</strong>? Give two examples of what it does.</li>
+<li>Why do we use <code style="color:var(--muted)">npm run start:dev</code> instead of just <code style="color:var(--muted)">npm run start</code>?</li>
+<li>In a fresh project, which file is the "Ignition Switch" that boots the application?</li>
+<li>If you want to create a new "Products" feature, what are the three CLI commands you would run in order?</li>
+<li>True or False: When you use <code style="color:var(--muted)">nest g s users</code>, you still need to manually add the service to the <code style="color:var(--muted)">providers</code> array of the module. Explain.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>The Nest CLI is a productivity tool for scaffolding. Examples: creating a new project (`nest new`) and generating components (`nest g`).</li>
+<li>`start:dev` enables Watch Mode, which automatically restarts the server whenever a file is saved.</li>
+<li><code>main.ts</code>.</li>
+<li>1. <code>nest g mo products</code>, 2. <code>nest g s products</code>, 3. <code>nest g co products</code>.</li>
+<li>False. The Nest CLI automatically registers the generated provider/controller into the nearest module.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Next Step</strong>: Now that the workspace is set up, we are going to build a real-world feature. We'll start with a <strong>Simple User Management API</strong> where we apply the "Thin Controller $\rightarrow$ Fat Service $\rightarrow$ Repository" pattern.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0010-ts-essentials.html">← Lesson 0010</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

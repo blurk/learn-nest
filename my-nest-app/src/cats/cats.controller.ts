@@ -8,7 +8,7 @@ export class CatsController {
 
   @Get('all')
   findAll() {
-    return 'This action return all cats';
+    return this.catsService.findAll();
   }
 
   @Get(':id')

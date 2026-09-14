@@ -137,7 +137,9 @@ Nest acts as a brain (orchestrator) that sits on top of the server (the muscle).
 
 **A:** Use the `@Exclude()` decorator from `class-transformer` on the class property. However, this only works if the `ClassSerializerInterceptor` is registered (usually globally in `main.ts` via `app.useGlobalInterceptors()`).
 
-**Crucial Requirement**: The controller must return an **instance of the class** (e.g., `return new UserResponseDto(...)`), not a plain JavaScript object. ---
+**Crucial Requirement**: The controller must return an **instance of the class** (e.g., `return new UserResponseDto(...)`), not a plain JavaScript object. The interceptor relies on the class prototype to identify which fields to strip.
+
+---
 
 ## 13. Controller Coordination
 
@@ -155,3 +157,19 @@ Nest acts as a brain (orchestrator) that sits on top of the server (the muscle).
 - **The "Noun" Test**: The method describes a general capability (e.g., `EmailService`) rather than a core action of the entity (e.g., `UsersService.updatePassword`).
 - **The "Change" Test**: Changing the new logic would risk breaking unrelated logic in the current class.
 - **The "Constructor" Test**: Adding the method requires injecting too many new dependencies, leading to a "God Object."
+
+---
+
+## 15. Database Connection Mechanics
+
+**Q: How does the repository actually connect to the DB?**
+
+**A:** It uses a three-layer stack: **NestJS &rarr; ORM (e.g. TypeORM) &rarr; Driver (e.g. pg)**. The ORM translates TS to SQL, and the Driver handles the raw TCP connection. To optimize performance, they use a **Connection Pool**, which keeps a set of open connections ready to be borrowed and returned, avoiding the expensive cost of reconnecting on every request.
+
+---
+
+## 16. The forRoot Convention
+
+**Q: Why the name `forRoot`? Anything the same as it?**
+
+**A:** It is a convention meaning "configure this once at the root of the app." It returns a **Dynamic Module**, allowing you to pass config (DB credentials, etc.) during bootstrapping. Its counterpart is **`forFeature()`**, used in feature modules to register specific entities or tools to that already-established global connection.

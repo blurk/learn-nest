@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0010 — TypeScript Essentials for NestJS</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>TypeScript Essentials for NestJS</h1>
+<p class="subtitle">Lesson 0010 · Practical · The language of Nest</p>
+
+<p><strong>The single idea in this lesson</strong>: NestJS isn't just "written in" TypeScript; it is <em>built on</em> TypeScript's most advanced features. To stop fighting the compiler, you must master three specific concepts: <strong>Decorators</strong>, <strong>Interfaces/Types</strong>, and <strong>Generics</strong>.</p>
+
+<h2>1. Decorators: The "Stickers" of Nest</h2>
+
+<p>You've seen `@Controller()`, `@Injectable()`, and `@Get()`. In TypeScript, these are called <strong>Decorators</strong>.</p>
+
+<p><strong>What they actually are</strong>: A decorator is just a function that receives a class, method, or property and "stamps" it with metadata. It doesn't usually change the code; it just tells Nest <em>how to treat the code</em>.</p>
+
+<p><strong>Mental Model</strong>: Imagine a plain cardboard box. 
+- You slap a sticker on it that says <code style="color:var(--accent)">"Fragile"</code>.
+- The box is still a box, but the delivery driver (NestJS) now knows to handle it with care.
+- The sticker is the <strong>Decorator</strong>; the driver is the <strong>Nest Runtime</strong>.</p>
+
+<h2>2. Types vs. Interfaces</h2>
+
+<p>In NestJS, you will see both <code>type</code> and <code>interface</code>. While they look similar, they have different roles in a backend app.</p>
+
+<p><strong>Interfaces</strong>: Used to define the <strong>shape of an object</strong> or a <strong>contract</strong> for a class.
+<br>Use these for: Repositories, Service contracts, and API responses.</p>
+<pre><code>
+interface IUserService {
+  findById(id: string): Promise&lt;User&gt;;
+}
+</code></pre>
+
+<p><strong>Types</strong>: Used for <strong>unions</strong> (this OR that) and <strong>aliases</strong>.
+<br>Use these for: State management, specific ID types, or combined shapes.</p>
+<pre><code>
+type UserStatus = 'active' | 'inactive' | 'suspended';
+type Result&lt;T&gt; = { success: boolean; data?: T; error?: string };
+</code></pre>
+
+<p><strong>Crucial Rule</strong>: Remember <em>Type Erasure</em>. Interfaces and Types vanish when TS is compiled to JS. If you need a type to exist at runtime (like for validation), you must use a <strong>Class</strong>.</p>
+
+<h2>3. Generics: The "Variable" for Types</h2>
+
+<p>Generics allow you to create a component that works with <strong>any</strong> type, but still keeps its type safety. You see them as the angle brackets: <code>&lt;T&gt;</code>.</p>
+
+<p><strong>Example: The Generic Response</strong><br>
+Instead of creating a <code>UserResponse</code>, <code>CatResponse</code>, and <code>OrderResponse</code>, you create one generic response:</p>
+
+<pre><code>
+// T is a placeholder for "Whatever type I put here later"
+interface ApiResponse&lt;T&gt; {
+  data: T;
+  timestamp: Date;
+}
+
+// Now we use it for different types:
+const userResponse: ApiResponse&lt;User&gt; = { data: userObj, timestamp: new Date() };
+const catResponse: ApiResponse&lt;Cat&gt; = { data: catObj, timestamp: new Date() };
+</code></pre>
+
+<p>In Nest, you'll see this most often in Repositories: <code>Repository&lt;User&gt;</code>. This tells the repository: "I am a generic data tool, but specifically for the <strong>User</strong> entity."</p>
+
+<h2>4. Modifier Keywords (The Access Control)</h2>
+
+<p>NestJS relies heavily on access modifiers in constructors. This is a TypeScript shortcut that does two things at once.</p>
+
+<pre><code>
+constructor(private readonly usersService: UsersService) {}
+</code></pre>
+
+<p>By adding <code style="color:var(--accent)">private readonly</code> inside the constructor, TypeScript automatically:
+<ol>
+  <li>Declares a property named <code>usersService</code> on the class.</li>
+  <li>Assigns the incoming value to that property.</li>
+  <li>Ensures it cannot be changed (readonly) and cannot be accessed outside the class (private).</li>
+</ol>
+It's shorthand for: <code style="color:var(--muted)">this.usersService = usersService;</code></p>
+
+<hr>
+
+<h2>Retrieval practice</h2>
+
+<p>Cover the answers. Answer out loud.</p>
+
+<div class="quiz">
+<form id="q">
+
+<ol>
+<li>In the "sticker" analogy, what is the <strong>Decorator</strong> and what is the <strong>Nest Runtime</strong>?</li>
+<li>Why must you use a <strong>Class</strong> instead of an <strong>Interface</strong> for a DTO that needs runtime validation?</li>
+<li>What does the <code>T</code> in <code>ApiResponse&lt;T&gt;</code> represent?</li>
+<li>What are the three things that happen when you put <code>private readonly</code> in a constructor?</li>
+<li>When should you use a <strong>Type</strong> instead of an <strong>Interface</strong>? Give one example.</li>
+</ol>
+
+<button type="button" onclick="showAnswers()">Reveal answers</button>
+<div class="result" id="result"></div>
+
+<details id="answers">
+<summary>Click to reveal the model answers</summary>
+<ol>
+<li>The Decorator is the sticker; the Nest Runtime is the driver who reads the sticker and acts accordingly.</li>
+<li>Because Interfaces are erased during compilation and do not exist in JavaScript at runtime.</li>
+<li>It is a Generic placeholder for any type that will be specified when the interface is actually used.</li>
+<li>1. Declares the property on the class. 2. Assigns the value. 3. Sets access (private) and mutability (readonly).</li>
+<li>Use a Type for unions or aliases. Example: <code>type Status = 'pending' | 'done'</code>.</li>
+</ol>
+</details>
+
+</form>
+</div>
+
+<hr>
+
+<div class="callout">
+<strong>Common Junior Trap</strong>: Trying to use <code>interface</code> for everything. If you find yourself wanting to use <code>new MyInterface()</code>, stop. You can't instantiate an interface. Use a Class.
+</div>
+
+<h2>Where to go next</h2>
+
+<p>You now have the vocabulary of both the <strong>Architecture</strong> (Modules, Services, Repos) and the <strong>Language</strong> (Decorators, Generics, Types).</p>
+
+<p>Next lesson: <strong>The First Project: Setting Up the Workspace</strong>. We are finally leaving the browser and opening the IDE. We will scaffold a real application and apply every single concept we've learned so far.</p>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0009-data-layer.html">← Lesson 0009</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+  <li>Resources: <a href="../RESOURCES.md">RESOURCES.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
