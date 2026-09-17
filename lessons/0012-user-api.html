@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0012 — Building the User Management API</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Building the User Management API</h1>
+<p class="subtitle">Lesson 0012 · Implementation · The Full Cycle</p>
+
+<p><strong>The goal of this lesson</strong>: To build a complete, working feature by following the architectural chain we've studied. We will build a User Management system that allows us to create and find users.</p>
+
+<div class="callout">
+<strong>Prerequisite</strong>: Please have a fresh NestJS project created using <code style="color:var(--muted)">nest new my-nest-app</code> and have the server running with <code style="color:var(--muted)">npm run start:dev</code>.
+</div>
+
+<h2 id="step-1">Step 1: Scaffolding the Feature</h2>
+
+<p>We start by using the CLI to create the structure. This ensures all registration in the modules is handled for us.</p>
+
+<p>Run these commands in your terminal:</p>
+<pre><code>
+nest g mo users
+nest g s users
+nest g co users
+</code></pre>
+
+<p>Check your <code style="color:var(--muted)">/src</code> folder. You now have a <code style="color:var(--accent)">/users</code> directory with a module, service, and controller. The <code style="color:var(--muted)">UsersModule</code> is already registered in <code style="color:var(--muted)">app.module.ts</code>.</p>
+
+<h2 id="step-2">Step 2: The Entity (The Shape)</h2>
+
+<p>We need to define what a "User" looks like. Create a file at <code style="color:var(--muted)">/src/users/user.entity.ts</code>.</p>
+
+<pre><code>
+export class User {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: Date;
+}
+</code></pre>
+
+<h2 id="step-3">Step 3: The Repository (The Data Access)</h2>
+
+<p>To keep our service "clean," we will implement a simple repository. For this lesson, we will use an <strong>In-Memory</strong> repository (a simple array) so we can focus on the pattern without needing a database installed.</p>
+
+<p>Create <code style="color:var(--muted)">/src/users/users.repository.ts</code>:</p>
+
+<pre><code>
+import { Injectable } from '@nestjs/common';
+import { User } from './user.entity';
+
+@Injectable()
+export class UsersRepository {
+  // Our "Fake" Database
+  private users: User[] = [];
+
+  async create(user: User): Promise&lt;User&gt; {
+    this.users.push(user);
+    return user;
+  }
+
+  async findById(id: string): Promise&lt;User | null&gt; {
+    return this.users.find(user => user.id === id) || null;
+  }
+
+  async findAll(): Promise&lt;User[]&gt; {
+    return [...this.users];
+  }
+}
+</code></pre>
+
+<p><strong>Crucial</strong>: You must register the repository in <code style="color:var(--muted)">users.module.ts</code> in the <code style="color:var(--muted)">providers</code> array!</p>
+
+<h2 id="step-4">Step 4: The Service (The Thinking)</h2>
+
+<p>Now we move the business logic into the service. The service will handle ID generation and basic validation.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.service.ts</code>:</p>
+
+<pre><code>
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { UsersRepository } from './users.repository';
+import { User } from './user.entity';
+
+@Injectable()
+export class UsersService {
+  constructor(private readonly usersRepo: UsersRepository) {}
+
+  async createUser(username: string, email: string): Promise&lt;User&gt; {
+    // Business Logic: Generate a random ID
+    const newUser: User = {
+      id: Math.random().toString(36).substr(2, 9),
+      username,
+      email,
+      createdAt: new Date(),
+    };
+
+    return this.usersRepo.create(newUser);
+  }
+
+  async getUserById(id: string): Promise&lt;User&gt; {
+    const user = await this.usersRepo.findById(id);
+    
+    // Business Logic: Handle "Not Found" state
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    
+    return user;
+  }
+}
+</code></pre>
+
+<h2 id="step-5">Step 5: The Controller (The Gateway)</h2>
+
+<p>Finally, we expose the service to the world. The controller should be "thin"—just calling the service.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.controller.ts</code>:</p>
+
+<pre><code>
+import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { UsersService } from './users.service';
+import { User } from './user.entity';
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post()
+  async create(@Body() body: { username: string; email: string }) {
+    return this.usersService.createUser(body.username, body.email);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string): Promise&lt;User&gt; {
+    return this.usersService.getUserById(id);
+  }
+}
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<p>Use a tool like <strong>Postman</strong>, <strong>Insomnia</strong>, or the <strong>REST Client</strong> extension in VS Code.</p>
+
+<ol>
+  <li><strong>Create a User</strong>: Send a <code style="color:var(--accent)">POST</code> request to <code style="color:var(--muted)">http://localhost:3000/users</code> with body <code style="color:var(--muted)">{ "username": "sena", "email": "sena@example.com" }</code>.
+  <br>Copy the <code style="color:var(--muted)">id</code> from the response.</li>
+  <li><strong>Find the User</strong>: Send a <code style="color:var(--accent)">GET</code> request to <code style="color:var(--muted)">http://localhost:3000/users/{id}</code>.</li>
+  <li><strong>Test Error</strong>: Send a <code style="color:var(--accent)">GET</code> request with a fake ID. You should see a <strong style="color:var(--muted)">404 Not Found</strong>.</li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: Notice the flow. The Controller handles the HTTP request, the Service handles the "User" logic, and the Repository handles the "Array" logic. If we decided to move from an Array to a Database, we would <em>only</em> change the Repository file.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0011-setup.html">← Lesson 0011</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

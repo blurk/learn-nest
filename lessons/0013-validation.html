@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0013 — Data Validation and DTOs</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Data Validation and DTOs</h1>
+<p class="subtitle">Lesson 0013 · Practical · Guarding the gateway</p>
+
+<p><strong>The single idea in this lesson</strong>: Never trust the client. A <strong style="color:var(--accent)">DTO (Data Transfer Object)</strong> is a contract that defines exactly what the API expects. Combined with a <strong style="color:var(--accent)">Validation Pipe</strong>, Nest can automatically reject bad requests with a 400 Bad Request before they ever touch your business logic.</p>
+
+<h2>1. The "Wild West" Problem</h2>
+
+<p>Currently, your controller looks like this:</p>
+<pre><code>
+@Post()
+async create(@Body() body: { username: string; email: string }) { ... }
+</code></pre>
+
+<p>This is "type-hinting," not "validation." If a client sends an empty object <code style="color:var(--muted)">{}</code> or a number instead of a string, TypeScript cannot stop it because TypeScript disappears at runtime. Your service will receive <code style="color:var(--muted)">undefined</code> and potentially crash or save corrupt data.</p>
+
+<h2>2. Step 1: Installing the Guards</h2>
+
+<p>Nest uses two powerful libraries for validation. Run these in your project terminal:</p>
+<pre><code>npm i class-validator class-transformer</code></pre>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong style="color:var(--accent)">class-validator</strong>: Allows you to use decorators (like <code style="color:var(--muted)">@IsEmail()</code>) to define validation rules.</li>
+  <li><strong style="color:var(--accent)">class-transformer</strong>: Allows Nest to convert plain JSON objects into actual class instances.</li>
+</ul>
+
+<h2>3. Step 2: Creating the DTO</h2>
+
+<p>Create a file at <code style="color:var(--muted)">/src/users/dto/create-user.dto.ts</code>. We use a <strong>Class</strong> here, not an interface, because classes exist at runtime.</p>
+
+<pre><code>
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3, { message: 'Username must be at least 3 characters long' })
+  username: string;
+
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  email: string;
+}
+</code></pre>
+
+<h2>4. Step 3: Activating the Global Pipe</h2>
+
+<p>Defining the DTO isn't enough; we need to tell Nest to actually <em>use</em> the validation rules. We do this in <code style="color:var(--muted)">main.ts</code> using the <strong style="color:var(--accent)">ValidationPipe</strong>.</p>
+
+<p>Edit <code style="color:var(--muted)">main.ts</code>:</p>
+
+<pre><code>
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common'; // 1. Import the pipe
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // 2. Tell Nest to use this pipe globally for every single request
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,               // Strip away properties that are not in the DTO
+    forbidNonWhitelisted: true,    // Throw an error if extra properties are sent
+    transform: true,               // Automatically transform payloads to DTO classes
+  }));
+
+  await app.listen(3000);
+}
+bootstrap();
+</code></pre>
+
+<h2>5. Step 4: Updating the Controller</h2>
+
+<p>Now, replace the plain object in your controller with the <strong style="color:var(--accent)">CreateUserDto</strong>.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.controller.ts</code>:</p>
+
+<pre><code>
+import { CreateUserDto } from './dto/create-user.dto'; // Import DTO
+
+@Post()
+async create(@Body() createUserDto: CreateUserDto) {
+  // Now we can trust that createUserDto.username and .email are valid!
+  return this.usersService.createUser(createUserDto.username, createUserDto.email);
+}
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<p>Try to break your API using Postman:</p>
+
+<ol>
+  <li><strong style="color:var(--accent)">Invalid Email</strong>: Send <code style="color:var(--muted)">{ "username": "bob", "email": "not-an-email" }</code>.
+  <br><strong>Result</strong>: You should get a <strong style="color:var(--muted)">400 Bad Request</strong> with a message about the email.</li>
+  <li><strong style="color:var(--accent)">Too Short</strong>: Send <code style="color:var(--muted)">{ "username": "bo", "email": "bob@test.com" }</code>.
+  <br><strong>Result</strong>: You should get a <strong style="color:var(--muted)">400 Bad Request</strong> about the minimum length.</li>
+  <li><strong style="color:var(--accent)">Extra Data</strong>: Send <code style="color:var(--muted)">{ "username": "bob", "email": "bob@test.com", "admin": true }</code>.
+  <br><strong>Result</strong>: Because we set <code style="color:var(--muted)">forbidNonWhitelisted: true</code>, Nest will reject this because <code style="color:var(--muted)">admin</code> is not in the DTO.</li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: Notice that the <strong style="color:var(--accent)">Service</strong> and <strong style="color:var(--accent)">Repository</strong> didn't change at all. We added a security layer at the <strong>Gateway</strong> (the Controller) that protects the rest of the application from bad data.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0012-user-api.html">← Lesson 0012</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(5, { message: 'Username must be at least 5 characters long' })
+  username!: string;
+
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  email!: string;
+}
