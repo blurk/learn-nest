@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0016 — Identity: Password Hashing & Auth</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Identity: Password Hashing & Auth</h1>
+<p class="subtitle">Lesson 0016 · Implementation · Securing the vault</p>
+
+<p><strong>The single idea in this lesson</strong>: Never store a password in plain text. If your database is leaked, plain passwords are a catastrophe. We use <strong style="color:var(--accent)">Hashing</strong> (one-way encryption) to store a "fingerprint" of the password instead of the password itself.</p>
+
+<h2>1. The Cardinal Sin of Backend</h2>
+
+<p>Imagine a user signs up with the password <code style="color:var(--muted)">"Password123!"</code>. If you save that directly in your SQLite file, any developer or hacker with access to the file can see it.</p>
+
+<p><strong>The Solution: Hashing with Bcrypt.</strong><br>
+Hashing is not encryption. Encryption is two-way (encrypt $\rightarrow$ decrypt). Hashing is <strong>one-way</strong>. You can turn a password into a hash, but you can never turn a hash back into the password.</p>
+
+<p><strong>How Login Works with Hashes:</strong>
+<ol>
+  <li>User provides password <code style="color:var(--muted)">"Password123!"</code> during login.</li>
+  <li>The server hashes that input using the same algorithm.</li>
+  <li>The server compares the <strong>new hash</strong> with the <strong>stored hash</strong>. If they match, the password was correct.</li>
+</ol></p>
+
+<h2>2. Step 1: Installing Bcrypt</h2>
+
+<p>Run this in your terminal to install the industry-standard hashing library:</p>
+<pre><code>npm i bcrypt && npm i -D @types/bcrypt</code></pre>
+
+<h2>3. Step 2: Updating the User Entity</h2>
+
+<p>We need a place to store the hash. Edit <code style="color:var(--muted)">/src/users/user.entity.ts</code>:</p>
+
+<pre><code>
+// Add this column to your User class
+@Column()
+passwordHash: string;
+</code></pre>
+
+<h2>4. Step 3: The AuthService (The Logic)</h2>
+
+<p>We don't put login logic in the `UsersService` because authentication is its own domain. We create a new <strong>AuthModule</strong>.</p>
+
+<p>Run these commands:</p>
+<pre><code>
+nest g mo auth
+nest g s auth
+nest g co auth
+</code></pre>
+
+<p>Edit <code style="color:var(--muted)">/src/auth/auth.service.ts</code>:</p>
+
+<pre><code>
+import { Injectable, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly usersService: UsersService) {}
+
+  async signUp(username: string, email: string, pass: string) {
+    // 1. Hash the password
+    const saltRounds = 10; 
+    const hashedPass = await bcrypt.hash(pass, saltRounds);
+
+    // 2. Save user with the hash, NOT the plain password
+    return this.usersService.createUser(username, email, hashedPass);
+  }
+
+  async login(email: string, pass: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) throw new BadRequestException('Invalid credentials');
+
+    // 3. Compare provided password with stored hash
+    const isMatch = await bcrypt.compare(pass, user.passwordHash);
+    if (!isMatch) throw new BadRequestException('Invalid credentials');
+
+    return { message: 'Login successful!' };
+  }
+}
+</code></pre>
+
+<h2>5. Step 4: Updating the UsersService</h2>
+
+<p>The `UsersService` needs a way to find a user by email and a way to save the password hash. Edit <code style="color:var(--muted)">/src/users/users.service.ts</code>:</p>
+
+<pre><code>
+// Update createUser to accept the passwordHash
+async createUser(username: string, email: string, passwordHash: string): Promise&lt;User&gt; {
+  const newUser: User = {
+    id: Math.random().toString(36).substr(2, 9),
+    username,
+    email,
+    passwordHash, // Store the hash!
+    createdAt: new Date(),
+  };
+  return this.usersRepo.create(newUser);
+}
+
+// Add this method for the AuthService to use
+async findByEmail(email: string): Promise&lt;User | null&gt; {
+  // You'll need to add findByEmail to your users.repository.ts first!
+  return this.usersRepo.findByEmail(email);
+}
+</code></pre>
+
+<h2>6. Step 5: Wiring the Modules</h2>
+
+<p>Since `AuthService` uses `UsersService`, we must import `UsersModule` into `AuthModule`. Edit <code style="color:var(--muted)">/src/auth/auth.module.ts</code>:</p>
+
+<pre><code>
+import { Module } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
+
+@Module({
+  imports: [UsersModule], // Give Auth access to Users
+  providers: [AuthService],
+  controllers: [AuthController],
+})
+export class AuthModule {}
+</code></pre>
+
+<p><strong>Important</strong>: In <code style="color:var(--muted)">/src/users/users.module.ts</code>, make sure to add <code style="color:var(--muted)">UsersService</code> to the <code style="color:var(--muted)">exports</code> array so other modules can use it!</p>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong>Sign Up</strong>: Create a POST endpoint in `AuthController` that calls `authService.signUp()`. Save a user.</li>
+  <li><strong>Check DB</strong>: Open <code style="color:var(--muted)">db.sqlite</code> (using a SQLite browser). You should see a long, random string of characters in the <code style="color:var(--muted)">passwordHash</code> column—<strong>not</strong> the plain password.</li>
+  <li><strong>Login</strong>: Create a POST endpoint in `AuthController` that calls `authService.login()`. 
+    <ul>
+      <li>Try the correct password $\rightarrow$ 200 OK.</li>
+      <li>Try a wrong password $\rightarrow$ 400 Bad Request.</li>
+    </ul>
+  </li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: Notice that the `UsersService` is still just a "Data Manager." It doesn't care about bcrypt or login logic. The `AuthService` is the "Security Guard" that handles the hashing and comparison.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0015-crud-complete.html">← Lesson 0015</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

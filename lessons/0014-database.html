@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0014 — The Persistence Layer: TypeORM & SQLite</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>The Persistence Layer: TypeORM & SQLite</h1>
+<p class="subtitle">Lesson 0014 · Implementation · Making data last</p>
+
+<p><strong>The single idea in this lesson</strong>: To move from "In-Memory" storage (arrays) to "Persistent" storage (databases). We will use <strong style="color:var(--accent)">TypeORM</strong> as our ORM and <strong style="color:var(--accent)">SQLite</strong> as our database because it's a simple file on your disk—no server installation required.</p>
+
+<h2>1. Installing the Database Engine</h2>
+
+<p>First, we need the TypeORM core and the SQLite driver. Run these in your terminal:</p>
+<pre><code>npm i @nestjs/typeorm typeorm sqlite3</code></pre>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong style="color:var(--accent)">@nestjs/typeorm</strong>: The bridge between NestJS and TypeORM.</li>
+  <li><strong style="color:var(--accent)">typeorm</strong>: The ORM that translates TS to SQL.</li>
+  <li><strong style="color:var(--accent)">sqlite3</strong>: The actual driver that reads/writes the .sqlite file.</li>
+</ul>
+
+<h2>2. Configuring the Connection (The Root)</h2>
+
+<p>As we learned in the theory lessons, we use <code style="color:var(--muted)">forRoot()</code> in the root module to set up the global connection.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/app.module.ts</code>:</p>
+
+<pre><code>
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from './users/users.module';
+import { User } from './users/user.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'sqlite',
+      database: 'db.sqlite', // This will create a file in your project root
+      entities: [User],       // Tell TypeORM which entities to manage
+      synchronize: true,      // ⚠️ DEV ONLY: auto-creates tables based on entities
+    }),
+    UsersModule,
+  ],
+})
+export class AppModule {}
+</code></pre>
+
+<h2>3. Turning the Entity into a Table</h2>
+
+<p>TypeORM needs special decorators to know how a class maps to a database table. Edit <code style="color:var(--muted)">/src/users/user.entity.ts</code>:</p>
+
+<pre><code>
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+@Entity() // This tells TypeORM: "This class is a database table"
+export class User {
+  @PrimaryGeneratedColumn('uuid') // Auto-generate a unique ID (UUID)
+  id: string;
+
+  @Column() // Maps to a standard column in the table
+  username: string;
+
+  @Column({ unique: true }) // Ensures no two users have the same email
+  email: string;
+
+  @Column({ default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+}
+</code></pre>
+
+<h2>4. Updating the Repository (The "Real" Implementation)</h2>
+
+<p>Now we replace our array with the actual TypeORM repository. We will use the "Medium" approach: a custom repository that wraps the generic TypeORM one.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.repository.ts</code>:</p>
+
+<pre><code>
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user.entity';
+
+@Injectable()
+export class UsersRepository {
+  constructor(
+    @InjectRepository(User) 
+    private readonly ormRepo: Repository&lt;User&gt;
+  ) {}
+
+  async create(user: Partial&lt;User&gt;): Promise&lt;User&gt; {
+    const newUser = this.ormRepo.create(user); // Create entity instance
+    return this.ormRepo.save(newUser);       // Save to DB
+  }
+
+  async findById(id: string): Promise&lt;User | null&gt; {
+    return this.ormRepo.findOneBy({ id });
+  }
+
+  async findAll(): Promise&lt;User[]&gt; {
+    return this.ormRepo.find();
+  }
+}
+</code></pre>
+
+<h2>5. Final Wiring (The Feature Module)</h2>
+
+<p>We need to tell the `UsersModule` that it should provide the `User` entity to the repository.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.module.ts</code>:</p>
+
+<pre><code>
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './user.entity';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
+import { UsersRepository } from './users.repository';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([User]), // Register the entity for this module
+  ],
+  providers: [UsersService, UsersController, UsersRepository],
+})
+export class UsersModule {}
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong style="color:var(--accent)">Check the files</strong>: Run the app. You should see a new file named <code style="color:var(--muted)">db.sqlite</code> appear in your project root.</li>
+  <li><strong style="color:var(--accent)">Persist Data</strong>: 
+    <ol>
+      <li>Create a user via POST request.</li>
+      <li>Stop the server (<code style="color:var(--muted)">Ctrl+C</code>).</li>
+      <li>Start the server again (<code style="color:var(--muted)">npm run start:dev</code>).</li>
+      <li>Find the user via GET request. <strong style="color:var(--accent)">It should still be there!</strong></li>
+    </ol>
+  </li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Architecture Reflection</strong>: Notice that the <strong style="color:var(--accent)">UsersService</strong> and <strong style="color:var(--accent)">UsersController</strong> didn't change a single line of code. Because we used the Repository pattern, we swapped the entire storage engine (Array &rarr; SQLite) without affecting the business logic. This is the power of decoupling.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0013-validation.html">← Lesson 0013</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

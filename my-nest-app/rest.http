@@ -1,12 +1,63 @@
-POST http://localhost:3000/users
-content-type: application/json
+### Variables
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+###############################################
+# CREATE (POST)
+###############################################
+
+# @name createUser
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
 
 {
-	"username": "senanes",
-	"email": "sena@example.com",
-	"isgai": false
+  "username": "johndoe",
+  "email": "john@example.com"
 }
 
-###
+### Store created ID from response
+@createdUserId = {{createUser.response.body.id}}
 
-GET http://localhost:3000/users/ee127b19-c536-4cd3-9661-a74e420ac88aa
+###############################################
+# READ ALL (GET)
+###############################################
+
+GET {{baseUrl}}/users
+
+### Query parameters & pagination
+GET {{baseUrl}}/users?page=1&limit=10&search=john
+
+###############################################
+# READ ONE (GET)
+###############################################
+
+GET {{baseUrl}}/users/{{createdUserId}}
+
+###############################################
+# UPDATE FULL (PUT)
+###############################################
+
+PUT {{baseUrl}}/users/{{createdUserId}}
+Content-Type: {{contentType}}
+
+{
+  "username": "johndoe_updated",
+  "email": "john.updated@example.com",
+}
+
+###############################################
+# UPDATE PARTIAL (PATCH)
+###############################################
+
+PATCH {{baseUrl}}/users/{{createdUserId}}
+Content-Type: {{contentType}}
+
+{
+	"username": "johndoe_updated"
+}
+
+###############################################
+# DELETE (DELETE)
+###############################################
+
+DELETE {{baseUrl}}/users/{{createdUserId}}

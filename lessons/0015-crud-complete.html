@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0015 — Completing the CRUD: Update & Delete</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Completing the CRUD: Update & Delete</h1>
+<p class="subtitle">Lesson 0015 · Implementation · Full lifecycle management</p>
+
+<p><strong>The single idea in this lesson</strong>: Managing data isn't just about adding and finding. To finish a CRUD API, we need to handle <em>Updates</em> and <em>Deletions</em>. We will learn the professional way to do this: using <strong style="color:var(--accent)">Partial Updates (PATCH)</strong> and <strong style="color:var(--accent)">Safe Deletions</strong>.</p>
+
+<h2>1. Update: PUT vs PATCH</h2>
+
+<p>In REST APIs, there are two ways to update data. Juniors often use them interchangeably, but they are very different:</p>
+
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong style="color:var(--accent)">PUT (Full Replace)</strong>: The client sends the <em>entire</em> object. If you forget a field, that field becomes null in the DB. (Rarely used in modern APIs).</li>
+  <li><strong style="color:var(--accent)">PATCH (Partial Update)</strong>: The client sends <em>only the fields they want to change</em>. If they only send the email, the username stays exactly as it was. (Industry Standard).</li>
+</ul>
+
+<h2>2. Step 1: The Update DTO</h2>
+
+<p>We can't reuse `CreateUserDto` because for an update, <strong>all fields should be optional</strong>. We don't want to force the user to send their email if they only want to change their username.</p>
+
+<p>Create <code style="color:var(--muted)">/src/users/dto/update-user.dto.ts</code>:</p>
+
+<pre><code>
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+
+export class UpdateUserDto {
+  @IsOptional() // The key to PATCH: the field can be missing
+  @IsString()
+  @MinLength(3)
+  username?: string; // The '?' means it is optional in TS
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+}
+</code></pre>
+
+<h2>3. Step 2: The Repository Logic</h2>
+
+<p>TypeORM makes partial updates easy. The <code style="color:var(--muted)">.save()</code> method is smart: if the object has an ID, it updates; if not, it inserts.</p>
+
+<p>Add these methods to <code style="color:var(--muted)">/src/users/users.repository.ts</code>:</p>
+
+<pre><code>
+async update(id: string, data: Partial&lt;User&gt;): Promise&lt;User&gt; {
+  // 1. Merge the existing user with the new data
+  await this.ormRepo.update(id, data); 
+  // 2. Return the updated version
+  return this.findById(id)!; 
+}
+
+async delete(id: string): Promise&lt;void&gt; {
+  await this.ormRepo.delete(id);
+}
+</code></pre>
+
+<h2>4. Step 3: The Service Logic</h2>
+
+<p>The service handles the business rule: "You cannot update a user that doesn't exist."</p>
+
+<p>Add these methods to <code style="color:var(--muted)">/src/users/users.service.ts</code>:</p>
+
+<pre><code>
+async updateUser(id: string, updateUserDto: UpdateUserDto): Promise&lt;User&gt; {
+  const user = await this.getUserById(id); // Reuse existing method for 404 check
+  return this.usersRepo.update(id, updateUserDto);
+}
+
+async deleteUser(id: string): Promise&lt;void&gt; {
+  const user = await this.getUserById(id); // 404 check
+  await this.usersRepo.delete(id);
+}
+</code></pre>
+
+<h2>5. Step 4: The Controller Gateway</h2>
+
+<p>Now we add the <code style="color:var(--accent)">@Patch</code> and <code style="color:var(--accent)">@Delete</code> endpoints.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.controller.ts</code>:</p>
+
+<pre><code>
+import { UpdateUserDto } from './dto/update-user.dto';
+import { Delete } from '@nestjs/common';
+
+// ... inside the class
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.updateUser(id, updateUserDto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
+  }
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong style="color:var(--accent)">Partial Update</strong>: Send a <code style="color:var(--muted)">PATCH</code> request to <code style="color:var(--muted)">/users/{id}</code> with <code style="color:var(--muted)">{ "username": "new_name" }</code>. 
+  <br>Verify that the username changed but the email stayed the same.</li>
+  <li><strong style="color:var(--accent)">Delete</strong>: Send a <code style="color:var(--muted)">DELETE</code> request to <code style="color:var(--muted)">/users/{id}</code>.
+  <br>Try to GET the user again; you should get a <strong style="color:var(--muted)">404 Not Found</strong>.</li>
+  <li><strong style="color:var(--accent)">Safe Deletion</strong>: Try to DELETE a user that doesn't exist. You should get a <strong style="color:var(--muted)">404</strong> because the service checks existence first.</li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Pro Tip: Soft Deletes</strong>: In real companies, we almost never actually delete data (Hard Delete). We use a <strong style="color:var(--accent)">Soft Delete</strong>. We add a <code style="color:var(--muted)">deletedAt</code> column to the Entity. When a user "deletes" their account, we just set the date. This allows us to restore data if the user changes their mind or if there is a legal requirement to keep logs.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0014-database.html">← Lesson 0014</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
