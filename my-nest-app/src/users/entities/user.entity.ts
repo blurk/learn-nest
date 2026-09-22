@@ -11,6 +11,9 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
+  @Column()
+  passwordHash!: string;
+
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 }

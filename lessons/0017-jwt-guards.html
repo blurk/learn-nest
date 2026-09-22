@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0017 — The Digital Passport: JWT & Guards</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>The Digital Passport: JWT & Guards</h1>
+<p class="subtitle">Lesson 0017 · Implementation · Stateless Authentication</p>
+
+<p><strong>The single idea in this lesson</strong>: HTTP is <em>stateless</em>—the server forgets who you are the millisecond a request ends. To solve this, we use a <strong style="color:var(--accent)">JWT (JSON Web Token</strong>). It is a signed "passport" that the client carries. The server doesn't need to remember the user; it just needs to verify the signature on the passport.</p>
+
+<h2>1. How JWT Works (The Mental Model)</h2>
+
+<p>Imagine a nightclub with a strict bouncer:</p>
+<ol>
+  <li><strong>The Login</strong>: You show your ID to the manager (AuthService). The manager gives you a <strong style="color:var(--accent)">VIP Wristband</strong> (the JWT).</li>
+  <li><strong>The Secret</strong>: The wristband is signed with a <strong style="color:var(--accent)">Secret Key</strong> that only the manager knows. You cannot forge this wristband.</li>
+  <li><strong>The Access</strong>: Every time you want to enter a room (API Route), you just show the wristband to the bouncer (the Guard).</li>
+  <li><strong>The Verification</strong>: The bouncer doesn't call the manager; he just looks at the signature on the wristband. If it's valid, you're in.</li>
+</ol>
+
+<h2>2. Step 1: Installing the JWT Tools</h2>
+
+<p>Run these in your terminal:</p>
+<pre><code>npm i @nestjs/jwt @nestjs/passport passport passport-jwt && npm i -D @types/passport-jwt</code></pre>
+
+<h2>3. Step 2: Configuring the JWT Module</h2>
+
+<p>We need to tell Nest how to sign the tokens. Edit <code style="color:var(--muted)">/src/auth/auth.module.ts</code>:</p>
+
+<pre><code>
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
+
+@Module({
+  imports: [
+    UsersModule,
+    PassportModule,
+    JwtModule.register({
+      secret: 'MY_SUPER_SECRET_KEY', // In real apps, use an environment variable!
+      signOptions: { expiresIn: '1h' }, // Token expires in 1 hour
+    }),
+  ],
+  providers: [AuthService],
+  controllers: [AuthController],
+})
+export class AuthModule {}
+</code></pre>
+
+<h2>4. Step 3: Issuing the Token</h2>
+
+<p>Update the `login` method in <code style="color:var(--muted)">/src/auth/auth.service.ts</code> to return a token instead of a simple message.</p>
+
+<pre><code>
+import { JwtService } from '@nestjs/jwt';
+
+// ... in the constructor
+constructor(
+  private readonly usersService: UsersService,
+  private readonly jwtService: JwtService // Inject the JWT tool
+) {}
+
+async login(email: string, pass: string) {
+  const user = await this.usersService.findByEmail(email);
+  if (!user) throw new BadRequestException('Invalid credentials');
+
+  const isMatch = await bcrypt.compare(pass, user.passwordHash);
+  if (!isMatch) throw new BadRequestException('Invalid credentials');
+
+  // Create the "Passport"
+  const payload = { sub: user.id, email: user.email };
+  return {
+    access_token: await this.jwtService.signAsync(payload),
+  };
+}
+</code></pre>
+
+<h2>5. Step 4: The Guard (The Bouncer)</h2>
+
+<p>Now we create a Guard to protect our routes. Create <code style="color:var(--muted)">/src/auth/jwt-auth.guard.ts</code>:</p>
+
+<pre><code>
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
+
+@Injectable()
+export class JwtAuthGuard implements CanActivate {
+  constructor(private readonly jwtService: JwtService) {}
+
+  async canActivate(context: ExecutionContext): Promise&lt;boolean&gt; {
+    const request = context.switchToHttp().getRequest&lt;Request&gt;();
+    const token = request.headers.authorization?.split(' ')[1]; // Extract "Bearer TOKEN"
+
+    if (!token) throw new UnauthorizedException('No token provided');
+
+    try {
+      const payload = await this.jwtService.verifyAsync(token);
+      request['user'] = payload; // Attach user info to the request for use in controllers
+      return true;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+  }
+}
+</code></pre>
+
+<h2>6. Step 5: Protecting Routes</h2>
+
+<p>Now you can lock any route using the <code style="color:var(--accent)">@UseGuards()</code> decorator. Edit <code style="color:var(--muted)">/src/users/users.controller.ts</code>:</p>
+
+<pre><code>
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('users')
+export class UsersController {
+  // ...
+
+  @Get('me') // New endpoint to get current logged-in user
+  @UseGuards(JwtAuthGuard)
+  getMe(@Req() req) {
+    return req.user; // Returns the payload we attached in the Guard
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard) // Only logged-in users can delete!
+  async remove(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
+  }
+}
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong style="color:var(--accent)">Login</strong>: POST to <code style="color:var(--muted)">/auth/login</code>. Copy the <code style="color:var(--muted)">access_token</code>.</li>
+  <li><strong>Access Protected Route</strong>: GET to <code style="color:var(--muted)">/users/me</code>. 
+    <ul style="list-style: none; padding-left: 0;">
+      <li><strong>Without Token</strong>: Should get <strong style="color:var(--muted)">401 Unauthorized</strong>.</li>
+      <li><strong>With Token</strong>: Add a header <code style="color:var(--muted)">Authorization: Bearer YOUR_TOKEN_HERE</code>. You should get your user info!</li>
+    </ul>
+  </li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: We have achieved <strong style="color:var(--accent)">Statelessness</strong>. The server doesn't store a "session" in memory. This means if you have 10 servers running your app, a user can log in on Server A and then make a request to Server B, and Server B will still know who they are because it can verify the token signature.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0016-auth-hashing.html">← Lesson 0016</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>

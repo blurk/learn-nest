@@ -19,6 +19,10 @@ export class UsersRepository {
     return this.ormRepo.findOneBy({ id });
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return this.ormRepo.findOneBy({ email });
+  }
+
   async findAll(): Promise<User[]> {
     return this.ormRepo.find();
   }

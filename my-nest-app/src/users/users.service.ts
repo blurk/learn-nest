@@ -7,11 +7,16 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(private readonly userRepo: UsersRepository) {}
 
-  async createUser(username: string, email: string): Promise<User> {
+  async createUser(
+    username: string,
+    email: string,
+    passwordHash: string,
+  ): Promise<User> {
     const newUser: User = {
       id: crypto.randomUUID(),
       username,
       email,
+      passwordHash,
       createdAt: new Date(),
     };
 
@@ -42,5 +47,9 @@ export class UsersService {
     await this.getUserById(id);
 
     await this.userRepo.delete(id);
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepo.findByEmail(email);
   }
 }

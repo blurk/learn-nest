@@ -3,20 +3,34 @@
 @contentType = application/json
 
 ###############################################
-# CREATE (POST)
+# Register User
 ###############################################
 
-# @name createUser
-POST {{baseUrl}}/users
+# @name register
+POST {{baseUrl}}/auth/register
 Content-Type: {{contentType}}
 
 {
   "username": "johndoe",
-  "email": "john@example.com"
+  "email": "john1@example.com",
+  "password": "Nokia12@"
 }
 
 ### Store created ID from response
-@createdUserId = {{createUser.response.body.id}}
+@createdUserId = ""
+
+###############################################
+# Sign in User
+###############################################
+
+# @name signIn
+POST {{baseUrl}}/auth/sign-in
+Content-Type: {{contentType}}
+
+{
+  "email": "john1@example.com",
+  "password": "Nokia12@"
+}
 
 ###############################################
 # READ ALL (GET)
