@@ -6,6 +6,9 @@ import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './users/entities/user.entity';
 import { AuthModule } from './auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
+import jwtConfig from './config/jwt.config';
+import { validateEnv } from './config/env.validation';
 
 @Module({
   imports: [
@@ -18,6 +21,11 @@ import { AuthModule } from './auth/auth.module';
       synchronize: true,
     }),
     AuthModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnv,
+      load: [jwtConfig],
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

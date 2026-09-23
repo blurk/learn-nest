@@ -32,6 +32,16 @@ Content-Type: {{contentType}}
   "password": "Nokia12@"
 }
 
+### Store accessToken from the response
+@accessToken = {{signIn.response.body.$.accessToken}}
+
+###############################################
+# READ ME (GET)
+###############################################
+
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
 ###############################################
 # READ ALL (GET)
 ###############################################

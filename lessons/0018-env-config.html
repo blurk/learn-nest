@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0018 — Professionalism: Environment Variables & Config</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>Professionalism: Environment Variables & Config</h1>
+<p class="subtitle">Lesson 0018 · Practical · Securing your secrets</p>
+
+<p><strong>The single idea in this lesson</strong>: Never hardcode secrets (API keys, DB passwords, JWT secrets) in your source code. If you push your code to GitHub, those secrets are public. We use a <strong style="color:var(--accent)">.env file</strong> to keep secrets on your local machine and the <strong style="color:var(--accent)">ConfigService</strong> to access them in NestJS.</p>
+
+<h2>1. The Danger of Hardcoding</h2>
+
+<p>Imagine your code looks like this:</p>
+<pre><code>
+JwtModule.register({
+  secret: 'MY_SUPER_SECRET_KEY_123!', // ❌ DANGEROUS
+})
+</code></pre>
+
+<p>If you commit this to a public repository, a bot will find that key in seconds. A hacker can then use that key to forge a JWT and log into your app as any user, including the Admin. This is one of the most common ways real companies get hacked.</p>
+
+<h2>2. Step 1: Installing the Config Package</h2>
+
+<p>NestJS provides a dedicated module to handle environment variables. Run this in your terminal:</p>
+<pre><code>npm i @nestjs/config</code></pre>
+
+<h2>3. Step 2: Creating the .env file</h2>
+
+<p>Create a file named <strong style="color:var(--accent)">.env</strong> in the absolute root of your project (next to <code style="color:var(--muted)">package.json</code>, NOT inside <code style="color:var(--muted)">/src</code>).</p>
+
+<p>Add your secrets there in <code style="color:var(--muted)">KEY=VALUE</code> format:</p>
+<pre><code>
+JWT_SECRET=a_very_long_random_string_that_only_i_know
+DB_DATABASE=db.sqlite
+PORT=3000
+</code></pre>
+
+<p><strong>Crucial Step</strong>: Create a <code style="color:var(--muted)">.gitignore</code> file in your root (if you don't have one) and add <code style="color:var(--muted)">.env</code> to it. This tells Git: "Do not ever upload this file to the cloud."</p>
+
+<h2>4. Step 3: Activating ConfigModule</h2>
+
+<p>We need to tell Nest to load the <code style="color:var(--muted)">.env</code> file when the app starts. Edit <code style="color:var(--muted)">/src/app.module.ts</code>:</p>
+
+<pre><code>
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config'; // 1. Import this
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from './users/users.module';
+import { User } from './users/user.entity';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ 
+      isGlobal: true, // 2. Make config available everywhere without re-importing
+    }),
+    TypeOrmModule.forRoot({
+      type: 'sqlite',
+      database: process.env.DB_DATABASE, // 3. Use the env variable!
+      entities: [User],
+      synchronize: true,
+    }),
+    UsersModule,
+  ],
+})
+export class AppModule {}
+</code></pre>
+
+<h2>5. Step 4: Using ConfigService in your Code</h2>
+
+<p>Now, instead of hardcoding the secret in your `AuthModule` or `Guard`, you use the <strong style="color:var(--accent)">ConfigService</strong> to fetch it at runtime.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/auth/auth.module.ts</code> (Dynamic Config):</p>
+
+<pre><code>
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+// ... other imports
+
+@Module({
+  imports: [
+    UsersModule,
+    PassportModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get&lt;string&gt;('JWT_SECRET'), // Fetch from .env
+        signOptions: { expiresIn: '1h' },
+      }),
+    }),
+  ],
+  providers: [AuthService],
+  controllers: [AuthController],
+})
+export class AuthModule {}
+</code></pre>
+
+<p>And finally, update your <code style="color:var(--muted)">/src/auth/jwt-auth.guard.ts</code> to be professional:</p>
+
+<pre><code>
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class JwtAuthGuard implements CanActivate {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService // Inject ConfigService
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise&lt;boolean&gt; {
+    // ... token extraction logic ...
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get&lt;string&gt;('JWT_SECRET'), // Clean and secure!
+      });
+      // ...
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+}
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong style="color:var(--accent)">Test the Secret</strong>: Change the <code style="color:var(--muted)">JWT_SECRET</code> in your <code style="color:var(--muted)">.env</code> file and restart the server. Your previous tokens should now be invalid (you'll get 401), because the "key" changed.</li>
+  <li><strong style="color:var(--accent)">Test the DB</strong>: Change <code style="color:var(--muted)">DB_DATABASE=test.sqlite</code> in your <code style="color:var(--muted)">.env</code>. Restart. You should see a new <code style="color:var(--muted)">test.sqlite</code> file created, and your previous users will be gone because you are now using a different database file.</li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: You have just implemented the "Industry Standard" for configuration. Your code is now 100% portable. You can give your code to a teammate, and they just create their own <code style="color:var(--muted)">.env</code> file with their own passwords, and the app works perfectly without touching a single line of TypeScript.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0017-jwt-guards.html">← Lesson 0017</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
