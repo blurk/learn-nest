@@ -5,6 +5,7 @@ export const envSchema = z.object({
     .string()
     .min(32, { message: 'JWT_SECRET must be at least 32 characters long' }),
   JWT_EXPIRES_IN: z.string().default('1h'),
+  PORT: z.string().default("3000")
 });
 
 // Create a TypeScript type inferred directly from the Zod validation schema

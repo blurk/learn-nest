@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0019 — API Documentation: Swagger & OpenAPI</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>API Documentation: Swagger & OpenAPI</h1>
+<p class="subtitle">Lesson 0019 · Practical · The developer's handbook</p>
+
+<p><strong>The single idea in this lesson</strong>: Manual documentation (like READMEs or Postman collections) dies the moment you change a line of code. <strong style="color:var(--accent)">Swagger (OpenAPI)</strong> automatically reads your NestJS decorators and generates a live, interactive website that is <em>always* in sync with your code.</p>
+
+<h2>1. Why Swagger?</h2>
+
+<p>When you work in a team, the frontend developer will ask you: 
+<br><em>"What is the endpoint for creating a user? What fields does it need? Does it return a 400 or a 404 if it fails?"</em></p>
+
+<p>Instead of writing a long Slack message, you just send them a link: <code style="color:var(--muted)">http://localhost:3000/api</code>. They can see every endpoint, every DTO, and test it themselves without ever seeing your source code.</p>
+
+<h2>2. Step 1: Installing Swagger</h2>
+
+<p>Run this in your terminal:</p>
+<pre><code>npm i @nestjs/swagger</code></pre>
+
+<h2>3. Step 2: Initializing the Documentation</h2>
+
+<p>You set up Swagger in <code style="color:var(--muted)">main.ts</code>. This tells Nest to start a small side-server that hosts the documentation website.</p>
+
+<p>Edit <code style="color:var(--muted)">main.ts</code>:</p>
+
+<pre><code>
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'; // 1. Import these
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
+
+  // 2. Configure Swagger
+  const config = new DocumentBuilder()
+    .setTitle('User Management API')
+    .setDescription('The User Management API description')
+    .setVersion('1.0')
+    .addBearerAuth() // This adds the "Authorize" button for your JWTs!
+    .build();
+    
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document); // This hosts the docs at /api
+
+  await app.listen(3000);
+}
+bootstrap();
+</code></pre>
+
+<h2>4. Step 3: Enhancing the Docs with Decorators</h2>
+
+<p>Swagger reads your types, but you can make the docs more helpful using special decorators. Edit your <strong style="color:var(--accent)">DTOs</strong> and <strong style="color:var(--accent)">Controllers</strong>.</p>
+
+<p>Edit <code style="color:var(--muted)">/src/users/dto/create-user.dto.ts</code>:</p>
+
+<pre><code>
+import { ApiProperty } from '@nestjs/swagger'; // Import this
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+
+export class CreateUserDto {
+  @ApiProperty({ example: 'sena_dev', description: 'The unique username' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3)
+  username: string;
+
+  @ApiProperty({ example: 'sena@example.com' })
+  @IsEmail()
+  email: string;
+}
+</code></pre>
+
+<p>Edit <code style="color:var(--muted)">/src/users/users.controller.ts</code>:</p>
+
+<pre><code>
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+
+@ApiTags('Users') // Groups all these endpoints under "Users" in the UI
+@Controller('users')
+export class UsersController {
+  
+  @ApiOperation({ summary: 'Create a new user' })
+  @Post()
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.createUser(createUserDto.username, createUserDto.email);
+  }
+
+  @ApiBearerAuth() // Tells Swagger this endpoint needs a JWT token
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMe(@Req() req) {
+    return req.user;
+  }
+}
+</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong style="color:var(--accent)">Visit the Site</strong>: Open <code style="color:var(--muted)">http://localhost:3000/api</code> in your browser. You should see the Swagger UI.</li>
+  <li><strong style="color:var(--accent)">Test an Endpoint</strong>: Expand the <code style="color:var(--muted)">POST /users</code> endpoint, click <strong style="color:var(--muted)">"Try it out"</strong>, fill in the example data, and hit <strong style="color:var(--muted)">"Execute"</strong>.</li>
+  <li><strong style="color:var(--accent)">Test Authorization</strong>: 
+    <ol>
+      <li>Click the green <strong style="color:var(--muted)">"Authorize"</strong> button at the top.</li>
+      <li>Paste your JWT token (the string after "Bearer ").</li>
+      <li>Try the <code style="color:var(--muted)">GET /users/me</code> endpoint. It should now return your user data!</li>
+    </ol>
+  </li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: You have just automated your documentation. If you add a new field to your DTO or a new endpoint to your controller, the Swagger UI updates <em>instantly</em> when you refresh the page. No more outdated READMEs.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0018-env-config.html">← Lesson 0018</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
