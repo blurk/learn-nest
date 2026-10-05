@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson 0020 — The Safety Net: Unit Testing with Jest</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+<h1>The Safety Net: Unit Testing with Jest</h1>
+<p class="subtitle">Lesson 0020 · Practical · Proving your code works</p>
+
+<p><strong>The single idea in this lesson</strong>: Manual testing (clicking buttons in Swagger) is slow and prone to error. <strong style="color:var(--accent)">Unit Testing</strong> allows you to write small scripts that test a single "unit" of logic (usually one method in a service) in isolation. If you change a line of code and the test turns red, you've caught a bug before it ever reached a user.</p>
+
+<h2>1. The Testing Pyramid</h2>
+
+<p>Professional apps use three types of tests:</p>
+<ul style="list-style: none; padding-left: 0;">
+  <li><strong style="color:var(--accent)">Unit Tests</strong>: Tests one function/method. Very fast. No DB, no Network. (The base of the pyramid).</li>
+  <li><strong style="color:var(--accent)">Integration Tests</strong>: Tests how two parts work together (e.g., Service + DB). Slower.</li>
+  <li><strong style="color:var(--accent)">E2E (End-to-End) Tests</strong>: Tests the whole flow from HTTP Request to DB and back. Slowest. (The top of the pyramid).</li>
+</ul>
+
+<h2>2. Meet Jest</h2>
+
+<p>NestJS comes with <strong style="color:var(--accent)">Jest</strong> pre-installed. Jest is the industry standard for JavaScript/TypeScript testing. It provides the tools to "assert" that a result is what we expect.</p>
+
+<p><strong>Common Jest Commands:</strong>
+- <code style="color:var(--muted)">expect(value).toBe(expected)</code>: Simple equality.
+- <code style="color:var(--muted)">expect(value).toEqual(expected)</code>: Deep equality for objects/arrays.
+- <code style="color:var(--muted)">expect(fn).rejects.toThrow()</code>: Checks if a promise fails.
+</p>
+
+<h2>3. The Magic of Mocking</h2>
+
+<p>We want to test the <strong style="color:var(--accent)">UsersService</strong>, but the service depends on the <strong style="color:var(--accent)">UsersRepository</strong>. We don't want our unit test to actually touch the SQLite database, because that makes the test slow and "unstable" (what if the DB file is missing?).</p>
+
+<p>The solution is a <strong style="color:var(--accent)">Mock</strong>. A mock is a "fake" version of the repository that we control. We tell the mock: <em>"When the service calls findById, don't go to the DB—just return this fake user object I created."</em></p>
+
+<h2>4. Step 1: Creating the Test File</h2>
+
+<p>Nest usually creates a <code style="color:var(--muted)">.spec.ts</code> file for every service. Create <code style="color:var(--muted)">/src/users/users.service.spec.ts</code>:</p>
+
+<pre><code>
+import { Test, TestingModule } from '@nestjs/testing';
+import { UsersService } from './users.service';
+import { UsersRepository } from './users.repository';
+import { NotFoundException } from '@nestjs/common';
+
+describe('UsersService', () => {
+  let service: UsersService;
+  let repository: UsersRepository;
+
+  beforeEach(async () => {
+    // 1. Create a "Mock" of the repository
+    const mockRepository = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      findByEmail: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        {
+          provide: UsersRepository,
+          useValue: mockRepository, // Inject the fake instead of the real one
+        },
+      ],
+    }).compile();
+
+    service = module.get&lt;UsersService&gt;(UsersService);
+    repository = module.get&lt;UsersRepository&gt;(UsersRepository);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  it('should throw a NotFoundException if user is not found', async () => {
+    // ARRANGE: Tell the mock to return null
+    jest.spyOn(repository, 'findById').mockResolvedValue(null);
+
+    // ACT & ASSERT: Check if the service throws the correct error
+    await expect(service.getUserById('123')).rejects.toThrow(NotFoundException);
+  });
+
+  it('should return a user if found', async () => {
+    const mockUser = { id: '123', username: 'testuser', email: 'test@test.com' };
+    // ARRANGE: Tell the mock to return our fake user
+    jest.spyOn(repository, 'findById').mockResolvedValue(mockUser as any);
+
+    // ACT
+    const result = await service.getUserById('123');
+
+    // ASSERT
+    expect(result).toEqual(mockUser);
+  });
+});
+</code></pre>
+
+<h2>5. Step 2: Running the Tests</h2>
+
+<p>You don't use `npm run start:dev` for tests. You use the test runner. Run this in your terminal:</p>
+<pre><code>npm run test</code></pre>
+
+<p>If you want to run tests in "Watch Mode" (re-run when you save), use:</p>
+<pre><code>npm run test:watch</code></pre>
+
+<hr>
+
+<h2 id="verification">How to verify your work</h2>
+
+<ol>
+  <li><strong style="color:var(--accent)">Run the command</strong>: Run <code style="color:var(--muted)">npm run test</code>.</li>
+  <li><strong style="color:var(--accent)">Check the output</strong>: You should see a green checkmark next to your tests. If a test fails, Jest will tell you exactly what the <em>Expected</em> value was vs the <em>Actual</em> value.</li>
+  <li><strong style="color:var(--accent)">Try a "Breaking Change"</strong>: Go to `users.service.ts` and change the `NotFoundException` to a `BadRequestException`. Run the test again. It should turn red! This proves your test is actually guarding your logic.</li>
+</ol>
+
+<hr>
+
+<div class="callout">
+<strong>Reflect</strong>: Notice that we tested the <strong style="color:var(--accent)">UsersService</strong> without ever touching the database or starting the HTTP server. This is why unit tests are so powerful—they are instant, isolated, and reliable.
+</div>
+
+<footer class="lesson-footer">
+<ul>
+  <li><a href="./0019-swagger.html">← Lesson 0019</a></li>
+  <li>Linked mission: <a href="../MISSION.md">MISSION.md</a></li>
+</ul>
+</footer>
+
+</body>
+</html>
